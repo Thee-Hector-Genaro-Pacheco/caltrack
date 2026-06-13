@@ -17,12 +17,16 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       orderBy: { timestamp: 'desc' },
       take: 5,
     });
+    const totalProcessAreas = await prisma.processArea.count();
+    const totalControlLoops = await prisma.controlLoop.count();
 
     res.json({
       totalInstruments,
       calibrationsDue,
       overdueInstruments,
       recentAuditActivity,
+      totalProcessAreas,
+      totalControlLoops,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

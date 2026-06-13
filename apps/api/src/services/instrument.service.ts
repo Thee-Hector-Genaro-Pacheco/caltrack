@@ -6,6 +6,10 @@ import { createAuditEvent } from './audit.service';
 export async function getAllInstruments() {
   return await prisma.instrument.findMany({
     orderBy: { tagNumber: 'asc' },
+    include: {
+      processArea: true,
+      controlLoop: true,
+    },
   });
 }
 
@@ -13,6 +17,8 @@ export async function getInstrumentById(id: string) {
   return await prisma.instrument.findUnique({
     where: { id },
     include: {
+      processArea: true,
+      controlLoop: true,
       calibrations: {
         orderBy: { calibrationDate: 'desc' },
         include: { testPoints: true }
@@ -35,6 +41,8 @@ export async function createInstrument(dto: CreateInstrumentDto, changedBy: stri
       location: dto.location,
       status: dto.status || 'ACTIVE',
       maxPermissibleError: dto.maxPermissibleError ?? 0.5,
+      processAreaId: dto.processAreaId || null,
+      controlLoopId: dto.controlLoopId || null,
     },
   });
 

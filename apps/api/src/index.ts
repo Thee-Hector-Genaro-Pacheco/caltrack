@@ -6,6 +6,8 @@ import instrumentsRouter from './routes/instruments';
 import calibrationsRouter from './routes/calibrations';
 import auditRouter from './routes/audit';
 import dashboardRouter from './routes/dashboard';
+import processAreasRouter from './routes/process-areas';
+import controlLoopsRouter from './routes/control-loops';
 
 dotenv.config();
 
@@ -28,6 +30,8 @@ app.use('/api/instruments', requireAuth, instrumentsRouter);
 app.use('/api/calibrations', requireAuth, calibrationsRouter);
 app.use('/api/audit', requireAuth, auditRouter);
 app.use('/api/dashboard', requireAuth, dashboardRouter);
+app.use('/api/process-areas', requireAuth, processAreasRouter);
+app.use('/api/control-loops', requireAuth, controlLoopsRouter);
 
 // Global Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

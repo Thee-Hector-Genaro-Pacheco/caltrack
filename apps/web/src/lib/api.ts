@@ -1,76 +1,152 @@
 import { isSupabaseConfigured, supabase } from './supabase';
-import { Instrument, CalibrationRecord, AuditEvent, DashboardStats, CreateInstrumentDto, UpdateInstrumentDto, CreateCalibrationRecordDto } from '@caltrack/types';
+import { Instrument, CalibrationRecord, AuditEvent, DashboardStats, CreateInstrumentDto, UpdateInstrumentDto, CreateCalibrationRecordDto, ProcessArea, CreateProcessAreaDto, ControlLoop, CreateControlLoopDto } from '@caltrack/types';
 
 // Mock local storage keys
 const MOCK_INSTRUMENTS_KEY = 'caltrack_mock_instruments';
 const MOCK_CALIBRATIONS_KEY = 'caltrack_mock_calibrations';
 const MOCK_AUDIT_KEY = 'caltrack_mock_audits';
+const MOCK_PROCESS_AREAS_KEY = 'caltrack_mock_process_areas';
+const MOCK_CONTROL_LOOPS_KEY = 'caltrack_mock_control_loops';
 
 // Base mock data generator if local storage is empty
 function initializeMockData() {
+  if (!localStorage.getItem(MOCK_PROCESS_AREAS_KEY)) {
+    const mockProcessAreas = [
+      {
+        id: 'area-10',
+        areaCode: '10',
+        name: 'Feedwater System',
+        description: 'Main boiler feedwater storage, treatment, and pumping facility.',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'area-12',
+        areaCode: '12',
+        name: 'Cooling Water System',
+        description: 'Closed-loop non-contact cooling water cooling towers and pumps.',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'area-15',
+        areaCode: '15',
+        name: 'Process Water System',
+        description: 'Demineralized water purification, storage, and utility loops.',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    ];
+    localStorage.setItem(MOCK_PROCESS_AREAS_KEY, JSON.stringify(mockProcessAreas));
+  }
+
+  if (!localStorage.getItem(MOCK_CONTROL_LOOPS_KEY)) {
+    const mockControlLoops = [
+      {
+        id: 'loop-101',
+        loopNumber: '101',
+        loopTag: 'PT-101 Control Loop',
+        description: 'Boiler 1 Header Pressure Master Control Loop',
+        pidReference: 'PID-10-FW-101',
+        processAreaId: 'area-10',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'loop-215',
+        loopNumber: '215',
+        loopTag: 'Flow Control Loop',
+        description: 'Cooling Tower Recycle Return Flow Loop',
+        pidReference: 'PID-12-CW-215',
+        processAreaId: 'area-12',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'loop-301',
+        loopNumber: '301',
+        loopTag: 'Level Control Loop',
+        description: 'Deaerator Storage Tank Level Control Loop',
+        pidReference: 'PID-15-PW-301',
+        processAreaId: 'area-15',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    ];
+    localStorage.setItem(MOCK_CONTROL_LOOPS_KEY, JSON.stringify(mockControlLoops));
+  }
+
   if (!localStorage.getItem(MOCK_INSTRUMENTS_KEY)) {
     const mockInstruments: Instrument[] = [
       {
         id: 'inst-1',
-        tagNumber: 'PT-101',
+        tagNumber: '10-PT-101A',
         instrumentType: 'Pressure Transmitter',
-        manufacturer: 'Acme Instruments',
-        model: 'PTX-500',
+        manufacturer: 'ABB',
+        model: '266MST Differential Pressure',
         rangeMin: 0,
         rangeMax: 150,
         engineeringUnits: 'PSI',
         signalType: '4-20 mA',
-        location: 'Crude Distillation Unit (CDU-1)',
+        location: 'Utilities Boiler House Main Steam Header',
         status: 'ACTIVE',
-        maxPermissibleError: 0.5,
+        maxPermissibleError: 0.25,
+        processAreaId: 'area-10',
+        controlLoopId: 'loop-101',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       },
       {
         id: 'inst-2',
-        tagNumber: 'TT-202',
+        tagNumber: '12-TT-301',
         instrumentType: 'Temperature Transmitter',
-        manufacturer: 'Apex Sensors',
-        model: 'RTD-100',
-        rangeMin: -50,
-        rangeMax: 400,
+        manufacturer: 'Honeywell',
+        model: 'STT700Smart',
+        rangeMin: 32,
+        rangeMax: 350,
         engineeringUnits: '°F',
-        signalType: 'HART / 4-20 mA',
-        location: 'Hydrotreater Reactor (RX-2)',
+        signalType: '4-20 mA',
+        location: 'Hydrotreater Reactor RX-302 Bed Overhead Vent',
         status: 'CALIBRATION_DUE',
         maxPermissibleError: 0.5,
+        processAreaId: 'area-12',
+        controlLoopId: 'loop-215',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       },
       {
         id: 'inst-3',
-        tagNumber: 'FT-303',
-        instrumentType: 'Flow Transmitter',
-        manufacturer: 'OmniFlow',
-        model: 'Vortex-M',
+        tagNumber: '12-TE-301A',
+        instrumentType: 'Temperature Element',
+        manufacturer: 'Rosemount',
+        model: '0065 RTD Sensor',
         rangeMin: 0,
-        rangeMax: 1200,
-        engineeringUnits: 'GPM',
-        signalType: 'Modbus TCP',
-        location: 'Product Pipeline Header',
+        rangeMax: 200,
+        engineeringUnits: '°C',
+        signalType: 'Direct Display',
+        location: 'Hydrotreater Reactor RX-302 Middle Bed Thermowell',
         status: 'OVERDUE',
-        maxPermissibleError: 0.5,
+        maxPermissibleError: 0.75,
+        processAreaId: 'area-12',
+        controlLoopId: 'loop-215',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       },
       {
         id: 'inst-4',
-        tagNumber: 'LT-404',
+        tagNumber: '15-LT-212',
         instrumentType: 'Level Radar',
-        manufacturer: 'VegaTech',
-        model: 'LR-80',
+        manufacturer: 'Vega',
+        model: 'VEGAPULS 6X Radar',
         rangeMin: 0,
-        rangeMax: 30,
+        rangeMax: 45,
         engineeringUnits: 'FT',
         signalType: '4-20 mA',
-        location: 'Storage Tank T-105',
+        location: 'Crude Storage Tank T-102 Level Radar Receiver',
         status: 'INACTIVE',
-        maxPermissibleError: 0.5,
+        maxPermissibleError: 0.25,
+        processAreaId: 'area-15',
+        controlLoopId: 'loop-301',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }
@@ -81,9 +157,9 @@ function initializeMockData() {
         id: 'cal-1',
         instrumentId: 'inst-1',
         calibrationDate: new Date(Date.now() - 30 * 24 * 3600000).toISOString(),
-        technicianName: 'John Doe',
-        asFound: 0.1,
-        asLeft: 0.0,
+        technicianName: 'Marcus Vance',
+        asFound: null,
+        asLeft: null,
         passFail: true,
         notes: 'Annual recalibration. Minor zero-shift adjusted.',
         createdAt: new Date().toISOString()
@@ -92,9 +168,9 @@ function initializeMockData() {
         id: 'cal-2',
         instrumentId: 'inst-2',
         calibrationDate: new Date(Date.now() - 366 * 24 * 3600000).toISOString(),
-        technicianName: 'Alice Smith',
-        asFound: 1.8,
-        asLeft: 0.2,
+        technicianName: 'Marcus Vance',
+        asFound: null,
+        asLeft: null,
         passFail: true,
         notes: 'Instrument drift observed, recalibrated within tolerance.',
         createdAt: new Date().toISOString()
@@ -139,10 +215,14 @@ initializeMockData();
 const getMockInstruments = (): Instrument[] => JSON.parse(localStorage.getItem(MOCK_INSTRUMENTS_KEY) || '[]');
 const getMockCalibrations = (): CalibrationRecord[] => JSON.parse(localStorage.getItem(MOCK_CALIBRATIONS_KEY) || '[]');
 const getMockAudits = (): AuditEvent[] => JSON.parse(localStorage.getItem(MOCK_AUDIT_KEY) || '[]');
+const getMockProcessAreas = (): any[] => JSON.parse(localStorage.getItem(MOCK_PROCESS_AREAS_KEY) || '[]');
+const getMockControlLoops = (): any[] => JSON.parse(localStorage.getItem(MOCK_CONTROL_LOOPS_KEY) || '[]');
 
 const saveMockInstruments = (data: Instrument[]) => localStorage.setItem(MOCK_INSTRUMENTS_KEY, JSON.stringify(data));
 const saveMockCalibrations = (data: CalibrationRecord[]) => localStorage.setItem(MOCK_CALIBRATIONS_KEY, JSON.stringify(data));
 const saveMockAudits = (data: AuditEvent[]) => localStorage.setItem(MOCK_AUDIT_KEY, JSON.stringify(data));
+const saveMockProcessAreas = (data: any[]) => localStorage.setItem(MOCK_PROCESS_AREAS_KEY, JSON.stringify(data));
+const saveMockControlLoops = (data: any[]) => localStorage.setItem(MOCK_CONTROL_LOOPS_KEY, JSON.stringify(data));
 
 // Fetch helper with token injection and automatic mock fallback
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -189,17 +269,28 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
   if (path === '/api/dashboard') {
     const insts = getMockInstruments();
     const audits = getMockAudits();
+    const areas = getMockProcessAreas();
+    const loops = getMockControlLoops();
     return {
       totalInstruments: insts.length,
       calibrationsDue: insts.filter(i => i.status === 'CALIBRATION_DUE').length,
       overdueInstruments: insts.filter(i => i.status === 'OVERDUE').length,
       recentAuditActivity: audits.slice(0, 5),
+      totalProcessAreas: areas.length,
+      totalControlLoops: loops.length,
     } as any as T;
   }
 
   if (path === '/api/instruments') {
     if (method === 'GET') {
-      return getMockInstruments() as any as T;
+      const insts = getMockInstruments();
+      const loops = getMockControlLoops();
+      const areas = getMockProcessAreas();
+      return insts.map(i => ({
+        ...i,
+        controlLoop: loops.find(l => l.id === i.controlLoopId),
+        processArea: areas.find(a => a.id === i.processAreaId),
+      })) as any as T;
     }
     if (method === 'POST') {
       const body = JSON.parse(options.body as string) as CreateInstrumentDto;
@@ -234,6 +325,111 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
     }
   }
 
+  if (path.startsWith('/api/process-areas')) {
+    if (method === 'GET') {
+      const areas = getMockProcessAreas();
+      const loops = getMockControlLoops();
+      return areas.map(a => ({
+        ...a,
+        controlLoops: loops.filter(l => l.processAreaId === a.id)
+      })) as any as T;
+    }
+    if (method === 'POST') {
+      const body = JSON.parse(options.body as string);
+      const areas = getMockProcessAreas();
+      const newArea = {
+        ...body,
+        id: `area-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      areas.push(newArea);
+      saveMockProcessAreas(areas);
+      // Audit log
+      const audits = getMockAudits();
+      audits.unshift({
+        id: `aud-${Date.now()}`,
+        entityType: 'ProcessArea',
+        entityId: newArea.id,
+        action: 'CREATE',
+        oldValue: null,
+        newValue: newArea,
+        changedBy: userEmail,
+        timestamp: new Date().toISOString(),
+        reason: 'Process Area Created',
+      });
+      saveMockAudits(audits);
+      return newArea as any as T;
+    }
+  }
+
+  if (path.startsWith('/api/control-loops')) {
+    const parts = path.split('/');
+    if (parts.length > 3 && parts[3] === 'instruments') {
+      const loopId = parts[2];
+      const insts = getMockInstruments();
+      const loops = getMockControlLoops();
+      const areas = getMockProcessAreas();
+      const matchedInsts = insts.filter(i => i.controlLoopId === loopId);
+      return matchedInsts.map(i => ({
+        ...i,
+        controlLoop: loops.find(l => l.id === i.controlLoopId),
+        processArea: areas.find(a => a.id === i.processAreaId),
+        calibrations: getMockCalibrations().filter(c => c.instrumentId === i.id),
+      })) as any as T;
+    } else if (parts.length > 2 && parts[2] !== '') {
+      const id = parts[2];
+      const loops = getMockControlLoops();
+      const areas = getMockProcessAreas();
+      const loop = loops.find(l => l.id === id);
+      if (!loop) throw new Error('Control Loop not found');
+      return {
+        ...loop,
+        processArea: areas.find(a => a.id === loop.processAreaId)
+      } as any as T;
+    } else {
+      if (method === 'GET') {
+        const loops = getMockControlLoops();
+        const areas = getMockProcessAreas();
+        return loops.map(l => ({
+          ...l,
+          processArea: areas.find(a => a.id === l.processAreaId)
+        })) as any as T;
+      }
+      if (method === 'POST') {
+        const body = JSON.parse(options.body as string);
+        const loops = getMockControlLoops();
+        const areas = getMockProcessAreas();
+        const newLoop = {
+          ...body,
+          id: `loop-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        loops.push(newLoop);
+        saveMockControlLoops(loops);
+        // Audit log
+        const audits = getMockAudits();
+        audits.unshift({
+          id: `aud-${Date.now()}`,
+          entityType: 'ControlLoop',
+          entityId: newLoop.id,
+          action: 'CREATE',
+          oldValue: null,
+          newValue: newLoop,
+          changedBy: userEmail,
+          timestamp: new Date().toISOString(),
+          reason: 'Control Loop Created',
+        });
+        saveMockAudits(audits);
+        return {
+          ...newLoop,
+          processArea: areas.find(a => a.id === newLoop.processAreaId)
+        } as any as T;
+      }
+    }
+  }
+
   if (path.startsWith('/api/instruments/')) {
     const id = path.split('/').pop();
     const insts = getMockInstruments();
@@ -246,9 +442,13 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
     if (method === 'GET') {
       const inst = insts[recordIdx];
       const calibrations = getMockCalibrations().filter(c => c.instrumentId === id);
+      const loops = getMockControlLoops();
+      const areas = getMockProcessAreas();
       return {
         ...inst,
         calibrations,
+        controlLoop: loops.find(l => l.id === inst.controlLoopId),
+        processArea: areas.find(a => a.id === inst.processAreaId),
       } as any as T;
     }
 
@@ -431,5 +631,17 @@ export const api = {
     body: JSON.stringify(dto),
   }),
   getAuditTrail: () => request<AuditEvent[]>('/api/audit'),
+  getProcessAreas: () => request<ProcessArea[]>('/api/process-areas'),
+  createProcessArea: (dto: CreateProcessAreaDto) => request<ProcessArea>('/api/process-areas', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  }),
+  getControlLoops: () => request<ControlLoop[]>('/api/control-loops'),
+  getControlLoop: (id: string) => request<ControlLoop>(`/api/control-loops/${id}`),
+  createControlLoop: (dto: CreateControlLoopDto) => request<ControlLoop>('/api/control-loops', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  }),
+  getLoopInstruments: (id: string) => request<Instrument[]>(`/api/control-loops/${id}/instruments`),
 };
 export default api;

@@ -30,6 +30,35 @@ model Instrument {
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
   calibrations        CalibrationRecord[]
+  
+  processAreaId       String?
+  processArea         ProcessArea?        @relation(fields: [processAreaId], references: [id], onDelete: SetNull)
+  controlLoopId       String?
+  controlLoop         ControlLoop?        @relation(fields: [controlLoopId], references: [id], onDelete: SetNull)
+}
+
+model ProcessArea {
+  id           String        @id @default(uuid())
+  areaCode     String        @unique
+  name         String
+  description  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  controlLoops ControlLoop[]
+  instruments  Instrument[]
+}
+
+model ControlLoop {
+  id            String       @id @default(uuid())
+  loopNumber    String       // e.g. "101" or "215"
+  loopTag       String       @unique // e.g. "PT-101 Control Loop"
+  description   String?
+  pidReference  String?
+  processAreaId String
+  processArea   ProcessArea  @relation(fields: [processAreaId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  instruments   Instrument[]
 }
 
 model CalibrationRecord {

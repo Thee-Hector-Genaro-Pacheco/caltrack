@@ -219,12 +219,44 @@ export default function InstrumentDetails() {
               <span className="text-white font-medium mt-0.5 block">{instrument.location}</span>
             </div>
             <div>
-              <span className="block text-gray-500 text-xs uppercase tracking-wider font-semibold">Created At</span>
-              <span className="text-white font-medium mt-0.5 block font-mono">{formatDate(instrument.createdAt)}</span>
+              <span className="block text-gray-500 text-xs uppercase tracking-wider font-semibold">Process Area</span>
+              <span className="text-white font-medium mt-0.5 block">
+                {instrument.processArea 
+                  ? `${instrument.processArea.areaCode} - ${instrument.processArea.name}`
+                  : 'N/A'}
+              </span>
             </div>
             <div>
-              <span className="block text-gray-500 text-xs uppercase tracking-wider font-semibold">Updated At</span>
-              <span className="text-white font-medium mt-0.5 block font-mono">{formatDate(instrument.updatedAt)}</span>
+              <span className="block text-gray-500 text-xs uppercase tracking-wider font-semibold">Control Loop</span>
+              <span className="text-white font-medium mt-0.5 block">
+                {instrument.controlLoop ? (
+                  <Link 
+                    to={`/control-loops/${instrument.controlLoop.id}`}
+                    className="text-indigo-400 hover:underline font-semibold"
+                  >
+                    {instrument.controlLoop.loopTag}
+                  </Link>
+                ) : 'N/A'}
+              </span>
+            </div>
+            <div>
+              <span className="block text-gray-500 text-xs uppercase tracking-wider font-semibold">P&ID Reference</span>
+              <span className="text-white font-medium mt-0.5 block font-mono">
+                {instrument.controlLoop?.pidReference || 'N/A'}
+              </span>
+            </div>
+            <div className="sm:col-span-2">
+              <span className="block text-gray-500 text-xs uppercase tracking-wider font-semibold">Metadata Info</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="block text-gray-500 text-[10px] uppercase tracking-wider">Created At</span>
+                  <span className="text-gray-400 font-medium mt-0.5 block font-mono text-xs">{formatDate(instrument.createdAt)}</span>
+                </div>
+                <div>
+                  <span className="block text-gray-500 text-[10px] uppercase tracking-wider">Updated At</span>
+                  <span className="text-gray-400 font-medium mt-0.5 block font-mono text-xs">{formatDate(instrument.updatedAt)}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

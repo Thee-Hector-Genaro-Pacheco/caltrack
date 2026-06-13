@@ -15,6 +15,34 @@ export interface Instrument {
   maxPermissibleError: number; // e.g. 0.5 for ±0.5%
   createdAt: Date | string;
   updatedAt: Date | string;
+  processAreaId?: string | null;
+  processArea?: ProcessArea | null;
+  controlLoopId?: string | null;
+  controlLoop?: ControlLoop | null;
+}
+
+export interface ProcessArea {
+  id: string;
+  areaCode: string;
+  name: string;
+  description?: string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  controlLoops?: ControlLoop[];
+  instruments?: Instrument[];
+}
+
+export interface ControlLoop {
+  id: string;
+  loopNumber: string;
+  loopTag: string;
+  description?: string | null;
+  pidReference?: string | null;
+  processAreaId: string;
+  processArea?: ProcessArea;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  instruments?: Instrument[];
 }
 
 export interface CalibrationTestPoint {
@@ -67,6 +95,8 @@ export interface CreateInstrumentDto {
   location: string;
   status?: InstrumentStatus;
   maxPermissibleError?: number; // e.g. 0.5
+  processAreaId?: string | null;
+  controlLoopId?: string | null;
 }
 
 export interface UpdateInstrumentDto {
@@ -81,7 +111,23 @@ export interface UpdateInstrumentDto {
   location?: string;
   status?: InstrumentStatus;
   maxPermissibleError?: number;
+  processAreaId?: string | null;
+  controlLoopId?: string | null;
   reason: string; // Audit reason is required on update
+}
+
+export interface CreateProcessAreaDto {
+  areaCode: string;
+  name: string;
+  description?: string;
+}
+
+export interface CreateControlLoopDto {
+  loopNumber: string;
+  loopTag: string;
+  description?: string;
+  pidReference?: string;
+  processAreaId: string;
 }
 
 export interface CreateCalibrationTestPointDto {
@@ -114,4 +160,6 @@ export interface DashboardStats {
   calibrationsDue: number;
   overdueInstruments: number;
   recentAuditActivity: AuditEvent[];
+  totalProcessAreas: number;
+  totalControlLoops: number;
 }

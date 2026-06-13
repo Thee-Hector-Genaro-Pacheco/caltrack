@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../lib/api';
-import { UpdateInstrumentDto } from '@caltrack/types';
+import { UpdateInstrumentDto, ProcessArea, ControlLoop } from '@caltrack/types';
 import { ArrowLeft, Save, AlertTriangle } from 'lucide-react';
 
 export default function InstrumentEdit() {
@@ -10,6 +10,9 @@ export default function InstrumentEdit() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [processAreas, setProcessAreas] = useState<ProcessArea[]>([]);
+  const [controlLoops, setControlLoops] = useState<ControlLoop[]>([]);
 
   const [formData, setFormData] = useState<UpdateInstrumentDto>({
     tagNumber: '',
@@ -23,13 +26,21 @@ export default function InstrumentEdit() {
     location: '',
     status: 'ACTIVE',
     maxPermissibleError: 0.5,
+    processAreaId: null,
+    controlLoopId: null,
     reason: '',
   });
 
   useEffect(() => {
     if (id) {
-      api.getInstrument(id)
-        .then(res => {
+      Promise.all([
+        api.getInstrument(id),
+        api.getProcessAreas(),
+        api.getControlLoops()
+      ])
+        .then(([res, areas, loops]) => {
+          setProcessAreas(areas);
+          setControlLoops(loops);
           setFormData({
             tagNumber: res.tagNumber,
             instrumentType: res.instrumentType,
@@ -42,13 +53,15 @@ export default function InstrumentEdit() {
             location: res.location,
             status: res.status,
             maxPermissibleError: res.maxPermissibleError,
+            processAreaId: res.processAreaId || null,
+            controlLoopId: res.controlLoopId || null,
             reason: '',
           });
           setLoading(false);
         })
         .catch(err => {
           console.error(err);
-          setError('Failed to load instrument details.');
+          setError('Failed to load instrument or plant hierarchy details.');
           setLoading(false);
         });
     }
@@ -56,10 +69,39 @@ export default function InstrumentEdit() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === 'rangeMin' || name === 'rangeMax' || name === 'maxPermissibleError' ? parseFloat(value) || 0 : value,
-    }));
+    setFormData((prev) => {
+      const next = {
+        ...prev,
+        [name]: name === 'rangeMin' || name === 'rangeMax' || name === 'maxPermissibleError'
+          ? parseFloat(value) || 0
+          : (name === 'processAreaId' || name === 'controlLoopId') && value === ''
+            ? null
+            : value,
+      };
+
+      // Smart UX Rules:
+      // 1. If processAreaId changed, check if current controlLoop belongs to it. If not, reset it.
+      if (name === 'processAreaId') {
+        if (value === '') {
+          next.controlLoopId = null;
+        } else {
+          const selectedLoop = controlLoops.find(l => l.id === prev.controlLoopId);
+          if (selectedLoop && selectedLoop.processAreaId !== value) {
+            next.controlLoopId = null;
+          }
+        }
+      }
+
+      // 2. If controlLoopId changed, auto-select its processAreaId if it has one.
+      if (name === 'controlLoopId' && value !== '') {
+        const selectedLoop = controlLoops.find(l => l.id === value);
+        if (selectedLoop) {
+          next.processAreaId = selectedLoop.processAreaId;
+        }
+      }
+
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -223,6 +265,46 @@ export default function InstrumentEdit() {
               value={formData.signalType}
               onChange={handleChange}
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+              Process Area
+            </label>
+            <select
+              name="processAreaId"
+              className="w-full bg-slate-900/60 border border-gray-700 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+              value={formData.processAreaId || ''}
+              onChange={handleChange}
+            >
+              <option value="">-- Unassigned --</option>
+              {processAreas.map((area) => (
+                <option key={area.id} value={area.id}>
+                  {area.areaCode} - {area.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+              Control Loop
+            </label>
+            <select
+              name="controlLoopId"
+              className="w-full bg-slate-900/60 border border-gray-700 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+              value={formData.controlLoopId || ''}
+              onChange={handleChange}
+            >
+              <option value="">-- Unassigned --</option>
+              {controlLoops
+                .filter((loop) => !formData.processAreaId || loop.processAreaId === formData.processAreaId)
+                .map((loop) => (
+                  <option key={loop.id} value={loop.id}>
+                    {loop.loopTag} ({loop.loopNumber})
+                  </option>
+                ))}
+            </select>
           </div>
 
           <div className="md:col-span-2">

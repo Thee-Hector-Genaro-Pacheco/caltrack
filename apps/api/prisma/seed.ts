@@ -1,3 +1,4 @@
+/// <reference path="../../../node_modules/.prisma/client/index.d.ts" />
 import { PrismaClient, InstrumentStatus } from '@prisma/client';
 import { getOutputSpan, calculateExpectedOutput, calculateErrorPercent, calculateTargetInput } from '@caltrack/utils';
 
@@ -9,8 +10,91 @@ async function main() {
   await prisma.calibrationTestPoint.deleteMany({});
   await prisma.calibrationRecord.deleteMany({});
   await prisma.instrument.deleteMany({});
+  await prisma.controlLoop.deleteMany({});
+  await prisma.processArea.deleteMany({});
 
-  console.log('Database cleared. Starting seeding...');
+  console.log('Database cleared. Seeding plant hierarchy...');
+
+  // 1. Create Process Areas
+  const area10 = await prisma.processArea.create({
+    data: {
+      areaCode: '10',
+      name: 'Feedwater System',
+      description: 'Main boiler feedwater storage, treatment, and pumping facility.',
+    },
+  });
+  const area12 = await prisma.processArea.create({
+    data: {
+      areaCode: '12',
+      name: 'Cooling Water System',
+      description: 'Closed-loop non-contact cooling water cooling towers and pumps.',
+    },
+  });
+  
+  const area15 = await prisma.processArea.create({
+    data: {
+      areaCode: '15',
+      name: 'Process Water System',
+      description: 'Demineralized water purification, storage, and utility loops.',
+    },
+  });
+
+  // Create Audit Events for Process Areas
+  for (const area of [area10, area12, area15]) {
+    await prisma.auditEvent.create({
+      data: {
+        entityType: 'ProcessArea',
+        entityId: area.id,
+        action: 'CREATE',
+        newValue: area as any,
+        changedBy: 'system@caltrack.com',
+        reason: 'Process Area Created',
+      },
+    });
+  }
+
+  // 2. Create Control Loops
+  const loop101 = await prisma.controlLoop.create({
+    data: {
+      loopNumber: '101',
+      loopTag: 'PT-101 Control Loop',
+      description: 'Boiler 1 Header Pressure Master Control Loop',
+      pidReference: 'PID-10-FW-101',
+      processAreaId: area10.id,
+    },
+  });
+  const loop215 = await prisma.controlLoop.create({
+    data: {
+      loopNumber: '215',
+      loopTag: 'Flow Control Loop',
+      description: 'Cooling Tower Recycle Return Flow Loop',
+      pidReference: 'PID-12-CW-215',
+      processAreaId: area12.id,
+    },
+  });
+  const loop301 = await prisma.controlLoop.create({
+    data: {
+      loopNumber: '301',
+      loopTag: 'Level Control Loop',
+      description: 'Deaerator Storage Tank Level Control Loop',
+      pidReference: 'PID-15-PW-301',
+      processAreaId: area15.id,
+    },
+  });
+
+  // Create Audit Events for Control Loops
+  for (const loop of [loop101, loop215, loop301]) {
+    await prisma.auditEvent.create({
+      data: {
+        entityType: 'ControlLoop',
+        entityId: loop.id,
+        action: 'CREATE',
+        newValue: loop as any,
+        changedBy: 'system@caltrack.com',
+        reason: 'Control Loop Created',
+      },
+    });
+  }
 
   // Helper function to seed an instrument and its associated data
   async function seedInstrument(data: {
@@ -34,6 +118,18 @@ async function main() {
     }[];
   }) {
     console.log(`Seeding instrument: ${data.tagNumber}`);
+
+    // Assign area and loop IDs based on area codes
+    let processAreaId = area15.id;
+    let controlLoopId = loop301.id;
+
+    if (data.tagNumber.startsWith('10-')) {
+      processAreaId = area10.id;
+      controlLoopId = loop101.id;
+    } else if (data.tagNumber.startsWith('12-')) {
+      processAreaId = area12.id;
+      controlLoopId = loop215.id;
+    }
     
     // 1. Create Instrument
     const instrument = await prisma.instrument.create({
@@ -49,6 +145,8 @@ async function main() {
         location: data.location,
         maxPermissibleError: data.maxPermissibleError,
         status: data.status,
+        processAreaId,
+        controlLoopId,
       }
     });
 

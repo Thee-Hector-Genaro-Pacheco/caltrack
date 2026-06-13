@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { DashboardStats } from '@caltrack/types';
-import { Activity, AlertTriangle, Database } from 'lucide-react';
+import { Activity, AlertTriangle, Database, Layers, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDate } from '@caltrack/utils';
 
@@ -48,7 +48,7 @@ export default function Dashboard() {
         <p className="text-gray-400 mt-1">Real-time instrument calibration compliance metrics.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
         <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-primary">
           <div className="flex justify-between items-start">
             <div>
@@ -91,6 +91,36 @@ export default function Dashboard() {
           </div>
           <div className="mt-4 text-xs text-red-400">
             <span>Critical calibration gap</span>
+          </div>
+        </div>
+
+        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Process Areas</p>
+              <h3 className="text-4xl font-extrabold text-white mt-2">{stats.totalProcessAreas}</h3>
+            </div>
+            <div className="p-3 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/25">
+              <Layers size={24} />
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-indigo-300">
+            <Link to="/process-areas" className="hover:underline">View process areas →</Link>
+          </div>
+        </div>
+
+        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Control Loops</p>
+              <h3 className="text-4xl font-extrabold text-white mt-2">{stats.totalControlLoops}</h3>
+            </div>
+            <div className="p-3 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/25">
+              <RefreshCw size={24} />
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-indigo-300">
+            <Link to="/control-loops" className="hover:underline">View control loops →</Link>
           </div>
         </div>
       </div>

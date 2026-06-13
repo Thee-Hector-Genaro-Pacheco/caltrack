@@ -8,7 +8,10 @@ import InstrumentNew from './pages/instrument-new';
 import InstrumentDetails from './pages/instrument-details';
 import InstrumentEdit from './pages/instrument-edit';
 import AuditTrail from './pages/audit-trail';
-import { Database, ShieldCheck, Activity, LogOut, LayoutDashboard, User } from 'lucide-react';
+import ProcessAreas from './pages/process-areas';
+import ControlLoops from './pages/control-loops';
+import LoopDetails from './pages/loop-details';
+import { Database, ShieldCheck, Activity, LogOut, LayoutDashboard, User, Layers, RefreshCw } from 'lucide-react';
 
 function AppLayout({ children, userEmail, handleLogout }: { children: React.ReactNode, userEmail: string, handleLogout: () => void }) {
   const location = useLocation();
@@ -40,6 +43,28 @@ function AppLayout({ children, userEmail, handleLogout }: { children: React.Reac
             >
               <LayoutDashboard size={18} />
               Dashboard
+            </Link>
+            <Link
+              to="/process-areas"
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                isLinkActive('/process-areas')
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10'
+                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <Layers size={18} />
+              Process Areas
+            </Link>
+            <Link
+              to="/control-loops"
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                isLinkActive('/control-loops')
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10'
+                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <RefreshCw size={18} />
+              Control Loops
             </Link>
             <Link
               to="/instruments"
@@ -165,6 +190,9 @@ export default function App() {
               <AppLayout userEmail={userEmail} handleLogout={handleLogout}>
                 <Routes>
                   <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/process-areas" element={<ProcessAreas />} />
+                  <Route path="/control-loops" element={<ControlLoops />} />
+                  <Route path="/control-loops/:id" element={<LoopDetails />} />
                   <Route path="/instruments" element={<InstrumentsList />} />
                   <Route path="/instruments/new" element={<InstrumentNew />} />
                   <Route path="/instruments/:id" element={<InstrumentDetails />} />

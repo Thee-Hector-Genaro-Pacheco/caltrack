@@ -17,6 +17,8 @@ const createInstrumentSchema = z.object({
   location: z.string().min(2),
   status: z.enum(['ACTIVE', 'CALIBRATION_DUE', 'OVERDUE', 'INACTIVE']).optional(),
   maxPermissibleError: z.number().positive().optional(),
+  processAreaId: z.string().uuid().nullable().optional(),
+  controlLoopId: z.string().uuid().nullable().optional(),
 });
 
 const updateInstrumentSchema = createInstrumentSchema.partial().extend({
