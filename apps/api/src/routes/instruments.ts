@@ -16,6 +16,7 @@ const createInstrumentSchema = z.object({
   signalType: z.string().min(2),
   location: z.string().min(2),
   status: z.enum(['ACTIVE', 'CALIBRATION_DUE', 'OVERDUE', 'INACTIVE']).optional(),
+  maxPermissibleError: z.number().positive().optional(),
 });
 
 const updateInstrumentSchema = createInstrumentSchema.partial().extend({

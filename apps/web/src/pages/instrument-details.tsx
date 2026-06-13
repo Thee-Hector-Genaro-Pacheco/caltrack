@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../lib/api';
 import { Instrument, CalibrationRecord } from '@caltrack/types';
-import { ArrowLeft, Calendar, User, FileText, Plus, ShieldAlert, Trash2, Edit3, X } from 'lucide-react';
+import { ArrowLeft, Calendar, User, FileText, Plus, ShieldAlert, Trash2, Edit3, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatDate } from '@caltrack/utils';
 
 export default function InstrumentDetails() {
@@ -15,15 +15,66 @@ export default function InstrumentDetails() {
   const [isCalModalOpen, setIsCalModalOpen] = useState(false);
   const [calDate, setCalDate] = useState(new Date().toISOString().split('T')[0]);
   const [technician, setTechnician] = useState('');
-  const [asFound, setAsFound] = useState('');
-  const [asLeft, setAsLeft] = useState('');
-  const [passFail, setPassFail] = useState(true);
   const [notes, setNotes] = useState('');
   const [calSubmitting, setCalSubmitting] = useState(false);
+  const [expandedCalId, setExpandedCalId] = useState<string | null>(null);
+  const [testPoints, setTestPoints] = useState<any[]>([]);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isCalModalOpen && instrument) {
+      const percentages = [0, 0.25, 0.5, 0.75, 1.0];
+      const initialPoints = percentages.map(p => {
+        const targetInput = instrument.rangeMin + p * (instrument.rangeMax - instrument.rangeMin);
+        const expectedOutput = instrument.signalType === '4-20 mA' ? 4 + 16 * p : targetInput;
+        return {
+          percent: p * 100,
+          targetInput,
+          expectedOutput,
+          asFoundOutput: '',
+          asLeftOutput: '',
+          asFoundError: 0,
+          asLeftError: 0,
+          pass: true,
+        };
+      });
+      setTestPoints(initialPoints);
+    }
+  }, [isCalModalOpen, instrument]);
+
+  const handlePointChange = (index: number, field: 'asFoundOutput' | 'asLeftOutput', value: string) => {
+    const nextPoints = [...testPoints];
+    nextPoints[index] = {
+      ...nextPoints[index],
+      [field]: value,
+    };
+
+    const outputSpan = instrument?.signalType === '4-20 mA' ? 16 : (instrument!.rangeMax - instrument!.rangeMin);
+    const mpe = instrument!.maxPermissibleError;
+    const pt = nextPoints[index];
+
+    const foundVal = parseFloat(pt.asFoundOutput);
+    const leftVal = parseFloat(pt.asLeftOutput);
+
+    if (!isNaN(foundVal) && outputSpan !== 0) {
+      pt.asFoundError = ((foundVal - pt.expectedOutput) / outputSpan) * 100;
+    } else {
+      pt.asFoundError = 0;
+    }
+
+    if (!isNaN(leftVal) && outputSpan !== 0) {
+      pt.asLeftError = ((leftVal - pt.expectedOutput) / outputSpan) * 100;
+      pt.pass = Math.abs(pt.asLeftError) <= mpe;
+    } else {
+      pt.asLeftError = 0;
+      pt.pass = true;
+    }
+
+    setTestPoints(nextPoints);
+  };
 
   useEffect(() => {
     if (id) {
@@ -53,16 +104,15 @@ export default function InstrumentDetails() {
         instrumentId: id!,
         calibrationDate: calDate,
         technicianName: technician,
-        asFound: parseFloat(asFound) || 0,
-        asLeft: parseFloat(asLeft) || 0,
-        passFail,
         notes,
+        testPoints: testPoints.map(pt => ({
+          targetInput: pt.targetInput,
+          asFoundOutput: parseFloat(pt.asFoundOutput) || 0,
+          asLeftOutput: parseFloat(pt.asLeftOutput) || 0,
+        })),
       });
       setIsCalModalOpen(false);
       setTechnician('');
-      setAsFound('');
-      setAsLeft('');
-      setPassFail(true);
       setNotes('');
       fetchDetails();
     } catch (err: any) {
@@ -154,13 +204,27 @@ export default function InstrumentDetails() {
                 {instrument.rangeMin} - {instrument.rangeMax} {instrument.engineeringUnits}
               </span>
             </div>
-            <div>
+             <div>
               <span className="block text-gray-500 text-xs uppercase tracking-wider font-semibold">Transmitter Signal output</span>
               <span className="text-white font-medium mt-0.5 block">{instrument.signalType}</span>
+            </div>
+            <div>
+              <span className="block text-gray-500 text-xs uppercase tracking-wider font-semibold">Max Permissible Error (MPE)</span>
+              <span className="text-white font-medium mt-0.5 block font-mono">
+                ±{instrument.maxPermissibleError}% of Span
+              </span>
             </div>
             <div className="sm:col-span-2">
               <span className="block text-gray-500 text-xs uppercase tracking-wider font-semibold">Physical Location</span>
               <span className="text-white font-medium mt-0.5 block">{instrument.location}</span>
+            </div>
+            <div>
+              <span className="block text-gray-500 text-xs uppercase tracking-wider font-semibold">Created At</span>
+              <span className="text-white font-medium mt-0.5 block font-mono">{formatDate(instrument.createdAt)}</span>
+            </div>
+            <div>
+              <span className="block text-gray-500 text-xs uppercase tracking-wider font-semibold">Updated At</span>
+              <span className="text-white font-medium mt-0.5 block font-mono">{formatDate(instrument.updatedAt)}</span>
             </div>
           </div>
         </div>
@@ -194,7 +258,7 @@ export default function InstrumentDetails() {
             className="w-full btn-transition bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg text-sm flex items-center justify-center gap-2 mt-6 shadow-lg shadow-indigo-600/10"
           >
             <Plus size={16} />
-            Log Calibration Record
+            Add Calibration Record
           </button>
         </div>
       </div>
@@ -211,48 +275,136 @@ export default function InstrumentDetails() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-gray-800 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-slate-900/30">
+                  <th className="py-3 px-4 w-10"></th>
                   <th className="py-3 px-4">Validation Date</th>
                   <th className="py-3 px-4">Technician</th>
-                  <th className="py-3 px-4">As Found ({instrument.engineeringUnits})</th>
-                  <th className="py-3 px-4">As Left ({instrument.engineeringUnits})</th>
+                  <th className="py-3 px-4">As Found ({instrument.signalType === '4-20 mA' ? 'mA' : instrument.engineeringUnits})</th>
+                  <th className="py-3 px-4">As Left ({instrument.signalType === '4-20 mA' ? 'mA' : instrument.engineeringUnits})</th>
                   <th className="py-3 px-4">Outcome</th>
                   <th className="py-3 px-4">Notes</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800/50 text-sm text-gray-300">
-                {instrument.calibrations.map((cal) => (
-                  <tr key={cal.id} className="hover:bg-white/5 transition-colors">
-                    <td className="py-3.5 px-4 font-mono text-xs">
-                      <div className="flex items-center gap-2">
-                        <Calendar size={14} className="text-gray-500" />
-                        {formatDate(cal.calibrationDate)}
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2 text-xs">
-                        <User size={14} className="text-gray-500" />
-                        {cal.technicianName}
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-xs">{cal.asFound}</td>
-                    <td className="py-3.5 px-4 font-mono text-xs">{cal.asLeft}</td>
-                    <td className="py-3.5 px-4">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase ${
-                        cal.passFail
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                          : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                      }`}>
-                        {cal.passFail ? 'PASS' : 'FAIL'}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-xs text-gray-400 max-w-xs truncate" title={cal.notes || ''}>
-                      <span className="flex items-center gap-1">
-                        <FileText size={14} className="text-gray-600 shrink-0" />
-                        {cal.notes || '-'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {instrument.calibrations.map((cal) => {
+                  const isExpanded = expandedCalId === cal.id;
+                  const hasTestPoints = cal.testPoints && cal.testPoints.length > 0;
+                  
+                  return (
+                    <React.Fragment key={cal.id}>
+                      <tr 
+                        className="hover:bg-white/5 transition-colors cursor-pointer"
+                        onClick={() => setExpandedCalId(isExpanded ? null : cal.id)}
+                      >
+                        <td className="py-3.5 px-4 text-center">
+                          <button className="p-1 hover:bg-white/10 rounded transition-colors text-gray-400">
+                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                          </button>
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-xs">
+                          <div className="flex items-center gap-2">
+                            <Calendar size={14} className="text-gray-500" />
+                            {formatDate(cal.calibrationDate)}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-2 text-xs">
+                            <User size={14} className="text-gray-500" />
+                            {cal.technicianName}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-xs">
+                          {hasTestPoints ? 'Multi-point' : (cal.asFound !== null && cal.asFound !== undefined ? cal.asFound : '-')}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-xs">
+                          {hasTestPoints ? 'Multi-point' : (cal.asLeft !== null && cal.asLeft !== undefined ? cal.asLeft : '-')}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase ${
+                            cal.passFail
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                          }`}>
+                            {cal.passFail ? 'PASS' : 'FAIL'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-xs text-gray-400 max-w-xs truncate" title={cal.notes || ''}>
+                          <span className="flex items-center gap-1">
+                            <FileText size={14} className="text-gray-600 shrink-0" />
+                            {cal.notes || '-'}
+                          </span>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={7} className="bg-slate-950/40 p-4 border-b border-gray-800">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+                                  Calibration Check points (±{instrument.maxPermissibleError}% MPE)
+                                </h4>
+                              </div>
+                              {hasTestPoints ? (
+                                <div className="overflow-x-auto border border-gray-800 rounded-lg">
+                                  <table className="w-full text-left text-xs border-collapse">
+                                    <thead>
+                                      <tr className="bg-slate-900/80 border-b border-gray-800 text-gray-400 font-semibold uppercase tracking-wider font-sans">
+                                        <th className="p-2.5">Target Input</th>
+                                        <th className="p-2.5">Expected Output</th>
+                                        <th className="p-2.5">As Found Output</th>
+                                        <th className="p-2.5">As Found Error</th>
+                                        <th className="p-2.5">As Left Output</th>
+                                        <th className="p-2.5">As Left Error</th>
+                                        <th className="p-2.5">Outcome</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-800/40 text-gray-300">
+                                      {cal.testPoints!.map((pt) => {
+                                        const isFoundErrorMpe = Math.abs(pt.asFoundError) > instrument.maxPermissibleError;
+                                        const isLeftErrorMpe = Math.abs(pt.asLeftError) > instrument.maxPermissibleError;
+                                        
+                                        return (
+                                          <tr key={pt.id} className="hover:bg-white/5 font-mono">
+                                            <td className="p-2.5">{pt.targetInput.toFixed(2)} {instrument.engineeringUnits}</td>
+                                            <td className="p-2.5">{pt.expectedOutput.toFixed(2)} {instrument.signalType === '4-20 mA' ? 'mA' : instrument.engineeringUnits}</td>
+                                            <td className="p-2.5">{pt.asFoundOutput.toFixed(2)} {instrument.signalType === '4-20 mA' ? 'mA' : instrument.engineeringUnits}</td>
+                                            <td className="p-2.5">
+                                              <span className={isFoundErrorMpe ? 'text-red-400 font-semibold' : 'text-emerald-400'}>
+                                                {pt.asFoundError.toFixed(3)}%
+                                              </span>
+                                            </td>
+                                            <td className="p-2.5">{pt.asLeftOutput.toFixed(2)} {instrument.signalType === '4-20 mA' ? 'mA' : instrument.engineeringUnits}</td>
+                                            <td className="p-2.5">
+                                              <span className={isLeftErrorMpe ? 'text-red-400 font-semibold' : 'text-emerald-400'}>
+                                                {pt.asLeftError.toFixed(3)}%
+                                              </span>
+                                            </td>
+                                            <td className="p-2.5 font-sans">
+                                              <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                                pt.passFail 
+                                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                                                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                              }`}>
+                                                {pt.passFail ? 'PASS' : 'FAIL'}
+                                              </span>
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              ) : (
+                                <div className="text-gray-500 text-xs italic">
+                                  Legacy/single-point calibration record. As Found: {cal.asFound ?? '-'}, As Left: {cal.asLeft ?? '-'}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -260,18 +412,18 @@ export default function InstrumentDetails() {
       </div>
 
       {isCalModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <div className="w-full max-w-lg glass-panel p-6 rounded-2xl glow-primary relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 overflow-y-auto py-8">
+          <div className="w-full max-w-3xl glass-panel p-6 rounded-2xl glow-primary relative my-auto">
             <button
               onClick={() => setIsCalModalOpen(false)}
               className="absolute top-4 right-4 p-1.5 rounded-lg text-gray-400 hover:bg-white/5 hover:text-white"
             >
               <X size={18} />
             </button>
-            <h3 className="text-xl font-bold text-white mb-1">New Calibration Record</h3>
-            <p className="text-gray-400 text-xs mb-6">Log field validation findings. Device state will update accordingly.</p>
-
-            <form onSubmit={handleAddCalibration} className="space-y-4">
+            <h3 className="text-xl font-bold text-white mb-1">New 5-Point Calibration Record</h3>
+            <p className="text-gray-400 text-xs mb-6">Log field validation findings. Acceptable tolerance limits: ±{instrument.maxPermissibleError}% MPE.</p>
+ 
+            <form onSubmit={handleAddCalibration} className="space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
@@ -298,66 +450,96 @@ export default function InstrumentDetails() {
                     onChange={(e) => setTechnician(e.target.value)}
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
-                    As Found Value ({instrument.engineeringUnits})
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    required
-                    className="w-full bg-slate-900 border border-gray-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-indigo-500"
-                    placeholder="0.0"
-                    value={asFound}
-                    onChange={(e) => setAsFound(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
-                    As Left Value ({instrument.engineeringUnits})
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    required
-                    className="w-full bg-slate-900 border border-gray-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-indigo-500"
-                    placeholder="0.0"
-                    value={asLeft}
-                    onChange={(e) => setAsLeft(e.target.value)}
-                  />
-                </div>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-                  Calibration Outcome
+                  Calibration Test Grid (5-Point Check)
                 </label>
-                <div className="flex gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setPassFail(true)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-semibold border btn-transition ${
-                      passFail
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/40 glow-success'
-                        : 'bg-transparent text-gray-500 border-gray-800'
-                    }`}
-                  >
-                    Pass
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPassFail(false)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-semibold border btn-transition ${
-                      !passFail
-                        ? 'bg-red-500/10 text-red-400 border-red-500/40'
-                        : 'bg-transparent text-gray-500 border-gray-800'
-                    }`}
-                  >
-                    Fail
-                  </button>
+                <div className="overflow-x-auto border border-gray-800 rounded-lg">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-900 border-b border-gray-800 text-gray-400 font-semibold uppercase tracking-wider">
+                        <th className="p-2 w-16 text-center">% Test</th>
+                        <th className="p-2">Target Input ({instrument.engineeringUnits})</th>
+                        <th className="p-2">Expected Output</th>
+                        <th className="p-2 w-28">As Found ({instrument.signalType === '4-20 mA' ? 'mA' : instrument.engineeringUnits})</th>
+                        <th className="p-2 text-center w-24">Found Error</th>
+                        <th className="p-2 w-28">As Left ({instrument.signalType === '4-20 mA' ? 'mA' : instrument.engineeringUnits})</th>
+                        <th className="p-2 text-center w-24">Left Error</th>
+                        <th className="p-2 text-center w-20">Outcome</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800/60 text-gray-300">
+                      {testPoints.map((pt, idx) => {
+                        const isFoundErrorMpe = Math.abs(pt.asFoundError) > instrument.maxPermissibleError;
+                        const isLeftErrorMpe = Math.abs(pt.asLeftError) > instrument.maxPermissibleError;
+                        const hasLeftValue = pt.asLeftOutput !== '';
+
+                        return (
+                          <tr key={idx} className="bg-slate-950/20 hover:bg-white/5 font-mono">
+                            <td className="p-2 text-center font-bold">{pt.percent}%</td>
+                            <td className="p-2">{pt.targetInput.toFixed(2)}</td>
+                            <td className="p-2">{pt.expectedOutput.toFixed(2)} {instrument.signalType === '4-20 mA' ? 'mA' : instrument.engineeringUnits}</td>
+                            <td className="p-2">
+                              <input
+                                type="number"
+                                step="any"
+                                required
+                                className="w-full bg-slate-900 border border-gray-700 rounded py-1 px-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+                                value={pt.asFoundOutput}
+                                onChange={(e) => handlePointChange(idx, 'asFoundOutput', e.target.value)}
+                                placeholder="0.0"
+                              />
+                            </td>
+                            <td className="p-2 text-center font-mono">
+                              {pt.asFoundOutput !== '' ? (
+                                <span className={isFoundErrorMpe ? 'text-red-400 font-semibold' : 'text-emerald-400'}>
+                                  {pt.asFoundError.toFixed(3)}%
+                                </span>
+                              ) : (
+                                <span className="text-gray-600">-</span>
+                              )}
+                            </td>
+                            <td className="p-2">
+                              <input
+                                type="number"
+                                step="any"
+                                required
+                                className="w-full bg-slate-900 border border-gray-700 rounded py-1 px-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+                                value={pt.asLeftOutput}
+                                onChange={(e) => handlePointChange(idx, 'asLeftOutput', e.target.value)}
+                                placeholder="0.0"
+                              />
+                            </td>
+                            <td className="p-2 text-center font-mono">
+                              {pt.asLeftOutput !== '' ? (
+                                <span className={isLeftErrorMpe ? 'text-red-400 font-semibold' : 'text-emerald-400'}>
+                                  {pt.asLeftError.toFixed(3)}%
+                                </span>
+                              ) : (
+                                <span className="text-gray-600">-</span>
+                              )}
+                            </td>
+                            <td className="p-2 text-center">
+                              {hasLeftValue ? (
+                                <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold font-sans ${
+                                  pt.pass ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                }`}>
+                                  {pt.pass ? 'PASS' : 'FAIL'}
+                                </span>
+                              ) : (
+                                <span className="text-gray-600">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-
+ 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
                   Technician Notes / Remarks
@@ -369,7 +551,7 @@ export default function InstrumentDetails() {
                   onChange={(e) => setNotes(e.target.value)}
                 />
               </div>
-
+ 
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-800 text-sm">
                 <button
                   type="button"

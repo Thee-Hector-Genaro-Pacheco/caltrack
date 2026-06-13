@@ -22,6 +22,7 @@ function initializeMockData() {
         signalType: '4-20 mA',
         location: 'Crude Distillation Unit (CDU-1)',
         status: 'ACTIVE',
+        maxPermissibleError: 0.5,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       },
@@ -37,6 +38,7 @@ function initializeMockData() {
         signalType: 'HART / 4-20 mA',
         location: 'Hydrotreater Reactor (RX-2)',
         status: 'CALIBRATION_DUE',
+        maxPermissibleError: 0.5,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       },
@@ -52,6 +54,7 @@ function initializeMockData() {
         signalType: 'Modbus TCP',
         location: 'Product Pipeline Header',
         status: 'OVERDUE',
+        maxPermissibleError: 0.5,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       },
@@ -67,6 +70,7 @@ function initializeMockData() {
         signalType: '4-20 mA',
         location: 'Storage Tank T-105',
         status: 'INACTIVE',
+        maxPermissibleError: 0.5,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }
@@ -204,6 +208,7 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
         ...body,
         id: `inst-${Date.now()}`,
         status: body.status || 'ACTIVE',
+        maxPermissibleError: body.maxPermissibleError || 0.5,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -318,20 +323,63 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
   if (path === '/api/calibrations') {
     if (method === 'POST') {
       const body = JSON.parse(options.body as string) as CreateCalibrationRecordDto;
+      const insts = getMockInstruments();
+      const inst = insts.find(i => i.id === body.instrumentId);
+      if (!inst) {
+        throw new Error('Instrument not found');
+      }
+
       const cals = getMockCalibrations();
+      const outputSpan = inst.signalType === '4-20 mA' ? 16 : inst.rangeMax - inst.rangeMin;
+      const maxError = inst.maxPermissibleError || 0.5;
+      let overallPass = true;
+
+      const testPoints = body.testPoints.map((pt, index) => {
+        const span = inst.rangeMax - inst.rangeMin;
+        const percentDecimal = span === 0 ? 0 : (pt.targetInput - inst.rangeMin) / span;
+        
+        const expectedOutput = inst.signalType === '4-20 mA' 
+          ? 4 + 16 * percentDecimal 
+          : pt.targetInput;
+
+        const asFoundError = outputSpan === 0 ? 0 : ((pt.asFoundOutput - expectedOutput) / outputSpan) * 100;
+        const asLeftError = outputSpan === 0 ? 0 : ((pt.asLeftOutput - expectedOutput) / outputSpan) * 100;
+        
+        const pointPass = Math.abs(asLeftError) <= maxError;
+        if (!pointPass) {
+          overallPass = false;
+        }
+
+        return {
+          id: `pt-${Date.now()}-${index}`,
+          calibrationRecordId: `cal-${Date.now()}`,
+          targetInput: pt.targetInput,
+          expectedOutput,
+          asFoundOutput: pt.asFoundOutput,
+          asLeftOutput: pt.asLeftOutput,
+          asFoundError,
+          asLeftError,
+          passFail: pointPass,
+        };
+      });
+
       const newCalibration: CalibrationRecord = {
-        ...body,
         id: `cal-${Date.now()}`,
+        instrumentId: body.instrumentId,
+        calibrationDate: new Date(body.calibrationDate).toISOString(),
+        technicianName: body.technicianName,
+        passFail: overallPass,
+        notes: body.notes || '',
         createdAt: new Date().toISOString(),
+        testPoints,
       };
+
       cals.push(newCalibration);
       saveMockCalibrations(cals);
 
-      // Status cascade update
-      const insts = getMockInstruments();
       const instIdx = insts.findIndex(i => i.id === body.instrumentId);
       if (instIdx !== -1) {
-        insts[instIdx].status = body.passFail ? 'ACTIVE' : 'CALIBRATION_DUE';
+        insts[instIdx].status = overallPass ? 'ACTIVE' : 'CALIBRATION_DUE';
         saveMockInstruments(insts);
       }
 

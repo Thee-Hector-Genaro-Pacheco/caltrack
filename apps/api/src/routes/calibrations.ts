@@ -9,10 +9,14 @@ const createCalibrationSchema = z.object({
   instrumentId: z.string().uuid(),
   calibrationDate: z.string().or(z.date()),
   technicianName: z.string().min(2),
-  asFound: z.number(),
-  asLeft: z.number(),
-  passFail: z.boolean(),
   notes: z.string().optional(),
+  testPoints: z.array(
+    z.object({
+      targetInput: z.number(),
+      asFoundOutput: z.number(),
+      asLeftOutput: z.number(),
+    })
+  ).min(1),
 });
 
 router.post('/', async (req: AuthRequest, res: Response) => {

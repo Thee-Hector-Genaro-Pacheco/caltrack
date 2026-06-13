@@ -22,6 +22,7 @@ export default function InstrumentEdit() {
     signalType: '4-20 mA',
     location: '',
     status: 'ACTIVE',
+    maxPermissibleError: 0.5,
     reason: '',
   });
 
@@ -40,6 +41,7 @@ export default function InstrumentEdit() {
             signalType: res.signalType,
             location: res.location,
             status: res.status,
+            maxPermissibleError: res.maxPermissibleError,
             reason: '',
           });
           setLoading(false);
@@ -56,7 +58,7 @@ export default function InstrumentEdit() {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === 'rangeMin' || name === 'rangeMax' ? parseFloat(value) || 0 : value,
+      [name]: name === 'rangeMin' || name === 'rangeMax' || name === 'maxPermissibleError' ? parseFloat(value) || 0 : value,
     }));
   };
 
@@ -252,6 +254,21 @@ export default function InstrumentEdit() {
               <option value="OVERDUE">OVERDUE</option>
               <option value="INACTIVE">INACTIVE</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+              Max Permissible Error (MPE %) *
+            </label>
+            <input
+              type="number"
+              step="any"
+              name="maxPermissibleError"
+              required
+              className="w-full bg-slate-900/60 border border-gray-700 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+              value={formData.maxPermissibleError}
+              onChange={handleChange}
+            />
           </div>
         </div>
 

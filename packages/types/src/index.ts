@@ -12,8 +12,21 @@ export interface Instrument {
   signalType: string;
   location: string;
   status: InstrumentStatus;
+  maxPermissibleError: number; // e.g. 0.5 for ±0.5%
   createdAt: Date | string;
   updatedAt: Date | string;
+}
+
+export interface CalibrationTestPoint {
+  id: string;
+  calibrationRecordId: string;
+  targetInput: number;
+  expectedOutput: number;
+  asFoundOutput: number;
+  asLeftOutput: number;
+  asFoundError: number;
+  asLeftError: number;
+  passFail: boolean;
 }
 
 export interface CalibrationRecord {
@@ -21,11 +34,12 @@ export interface CalibrationRecord {
   instrumentId: string;
   calibrationDate: Date | string;
   technicianName: string;
-  asFound: number;
-  asLeft: number;
+  asFound?: number | null;
+  asLeft?: number | null;
   passFail: boolean;
   notes?: string | null;
   createdAt: Date | string;
+  testPoints?: CalibrationTestPoint[];
 }
 
 export interface AuditEvent {
@@ -52,6 +66,7 @@ export interface CreateInstrumentDto {
   signalType: string;
   location: string;
   status?: InstrumentStatus;
+  maxPermissibleError?: number; // e.g. 0.5
 }
 
 export interface UpdateInstrumentDto {
@@ -65,17 +80,22 @@ export interface UpdateInstrumentDto {
   signalType?: string;
   location?: string;
   status?: InstrumentStatus;
+  maxPermissibleError?: number;
   reason: string; // Audit reason is required on update
+}
+
+export interface CreateCalibrationTestPointDto {
+  targetInput: number;
+  asFoundOutput: number;
+  asLeftOutput: number;
 }
 
 export interface CreateCalibrationRecordDto {
   instrumentId: string;
   calibrationDate: string | Date;
   technicianName: string;
-  asFound: number;
-  asLeft: number;
-  passFail: boolean;
   notes?: string;
+  testPoints: CreateCalibrationTestPointDto[];
 }
 
 export interface CreateAuditEventDto {

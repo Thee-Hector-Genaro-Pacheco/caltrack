@@ -12,7 +12,12 @@ export async function getAllInstruments() {
 export async function getInstrumentById(id: string) {
   return await prisma.instrument.findUnique({
     where: { id },
-    include: { calibrations: { orderBy: { calibrationDate: 'desc' } } },
+    include: {
+      calibrations: {
+        orderBy: { calibrationDate: 'desc' },
+        include: { testPoints: true }
+      }
+    },
   });
 }
 
@@ -29,6 +34,7 @@ export async function createInstrument(dto: CreateInstrumentDto, changedBy: stri
       signalType: dto.signalType,
       location: dto.location,
       status: dto.status || 'ACTIVE',
+      maxPermissibleError: dto.maxPermissibleError ?? 0.5,
     },
   });
 
@@ -104,20 +110,70 @@ export async function deleteInstrument(id: string, changedBy: string, reason: st
   return instrument;
 }
 
+import { getOutputSpan, calculateExpectedOutput, calculateErrorPercent } from '@caltrack/utils';
+
 export async function addCalibrationRecord(dto: CreateCalibrationRecordDto, changedBy: string) {
+  const instrument = await prisma.instrument.findUnique({
+    where: { id: dto.instrumentId }
+  });
+
+  if (!instrument) {
+    throw new Error('Instrument not found');
+  }
+
+  const outputSpan = getOutputSpan(instrument.rangeMin, instrument.rangeMax, instrument.signalType);
+  const maxError = instrument.maxPermissibleError;
+
+  let overallPass = true;
+
+  const pointsData = dto.testPoints.map((pt) => {
+    const span = instrument.rangeMax - instrument.rangeMin;
+    const percentDecimal = span === 0 ? 0 : (pt.targetInput - instrument.rangeMin) / span;
+
+    const expectedOutput = calculateExpectedOutput(
+      instrument.rangeMin,
+      instrument.rangeMax,
+      instrument.signalType,
+      percentDecimal
+    );
+
+    const asFoundError = calculateErrorPercent(pt.asFoundOutput, expectedOutput, outputSpan);
+    const asLeftError = calculateErrorPercent(pt.asLeftOutput, expectedOutput, outputSpan);
+
+    const pointPass = Math.abs(asLeftError) <= maxError;
+
+    if (!pointPass) {
+      overallPass = false;
+    }
+
+    return {
+      targetInput: pt.targetInput,
+      expectedOutput,
+      asFoundOutput: pt.asFoundOutput,
+      asLeftOutput: pt.asLeftOutput,
+      asFoundError,
+      asLeftError,
+      passFail: pointPass,
+    };
+  });
+
   const record = await prisma.calibrationRecord.create({
     data: {
       instrumentId: dto.instrumentId,
       calibrationDate: new Date(dto.calibrationDate),
       technicianName: dto.technicianName,
-      asFound: dto.asFound,
-      asLeft: dto.asLeft,
-      passFail: dto.passFail,
+      passFail: overallPass,
       notes: dto.notes,
+      testPoints: {
+        create: pointsData,
+      },
+    },
+    include: {
+      testPoints: true,
     },
   });
 
-  const nextStatus = dto.passFail ? 'ACTIVE' : 'CALIBRATION_DUE';
+  const nextStatus = overallPass ? 'ACTIVE' : 'CALIBRATION_DUE';
   await prisma.instrument.update({
     where: { id: dto.instrumentId },
     data: { status: nextStatus },

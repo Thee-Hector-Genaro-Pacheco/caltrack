@@ -15,33 +15,48 @@ enum InstrumentStatus {
 }
 
 model Instrument {
-  id               String              @id @default(uuid())
-  tagNumber        String              @unique
-  instrumentType   String
-  manufacturer     String
-  model            String
-  rangeMin         Float
-  rangeMax         Float
-  engineeringUnits String
-  signalType       String
-  location         String
-  status           InstrumentStatus    @default(ACTIVE)
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  calibrations     CalibrationRecord[]
+  id                  String              @id @default(uuid())
+  tagNumber           String              @unique
+  instrumentType      String
+  manufacturer        String
+  model               String
+  rangeMin            Float
+  rangeMax            Float
+  engineeringUnits    String
+  signalType          String
+  location            String
+  status              InstrumentStatus    @default(ACTIVE)
+  maxPermissibleError Float               @default(0.5) // Tolerance % of Span (e.g. 0.5%)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  calibrations        CalibrationRecord[]
 }
 
 model CalibrationRecord {
-  id              String     @id @default(uuid())
+  id              String                 @id @default(uuid())
   instrumentId    String
-  instrument      Instrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  instrument      Instrument             @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
   calibrationDate DateTime
   technicianName  String
-  asFound         Float
-  asLeft          Float
+  asFound         Float?
+  asLeft          Float?
   passFail        Boolean
   notes           String?
-  createdAt       DateTime   @default(now())
+  createdAt       DateTime               @default(now())
+  testPoints      CalibrationTestPoint[]
+}
+
+model CalibrationTestPoint {
+  id                  String            @id @default(uuid())
+  calibrationRecordId String
+  calibrationRecord   CalibrationRecord @relation(fields: [calibrationRecordId], references: [id], onDelete: Cascade)
+  targetInput         Float
+  expectedOutput      Float
+  asFoundOutput       Float
+  asLeftOutput        Float
+  asFoundError        Float
+  asLeftError         Float
+  passFail            Boolean
 }
 
 model AuditEvent {

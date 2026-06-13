@@ -53,3 +53,41 @@ export function formatDate(date: string | Date): string {
     day: 'numeric',
   });
 }
+
+/**
+ * Get the Output Span of an instrument
+ */
+export function getOutputSpan(rangeMin: number, rangeMax: number, signalType: string): number {
+  if (signalType === '4-20 mA') {
+    return 16;
+  }
+  // For Direct/Digital displays or matching input ranges
+  return rangeMax - rangeMin;
+}
+
+/**
+ * Calculate the target input physical value at a given percentage decimal
+ */
+export function calculateTargetInput(rangeMin: number, rangeMax: number, percentDecimal: number): number {
+  return rangeMin + percentDecimal * (rangeMax - rangeMin);
+}
+
+/**
+ * Calculate expected electrical/digital output value for given input percentage
+ */
+export function calculateExpectedOutput(rangeMin: number, rangeMax: number, signalType: string, percentDecimal: number): number {
+  if (signalType === '4-20 mA') {
+    return 4 + 16 * percentDecimal;
+  }
+  // Direct/Digital matching input values
+  return calculateTargetInput(rangeMin, rangeMax, percentDecimal);
+}
+
+/**
+ * Calculate error percentage relative to the output span
+ */
+export function calculateErrorPercent(observedOutput: number, expectedOutput: number, outputSpan: number): number {
+  if (outputSpan === 0) return 0;
+  return ((observedOutput - expectedOutput) / outputSpan) * 100;
+}
+

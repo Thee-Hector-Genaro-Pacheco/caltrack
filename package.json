@@ -11,7 +11,8 @@
     "build": "npm run build --workspaces --if-present",
     "start": "npm run start --workspaces --if-present",
     "prisma:generate": "npm run prisma:generate --workspace=@caltrack/api",
-    "prisma:migrate": "npm run prisma:migrate --workspace=@caltrack/api"
+    "prisma:migrate": "npm run prisma:migrate --workspace=@caltrack/api",
+    "db:seed": "npm run db:seed --workspace=@caltrack/api"
   },
   "devDependencies": {
     "typescript": "^5.4.5"
