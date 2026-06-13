@@ -26,6 +26,8 @@ export default function InstrumentNew() {
     maxPermissibleError: 0.5,
     processAreaId: null,
     controlLoopId: null,
+    calibrationIntervalMonths: 12,
+    lastCalibrationDate: null,
   });
 
   useEffect(() => {
@@ -51,9 +53,11 @@ export default function InstrumentNew() {
         ...prev,
         [name]: name === 'rangeMin' || name === 'rangeMax' || name === 'maxPermissibleError'
           ? parseFloat(value) || 0
-          : (name === 'processAreaId' || name === 'controlLoopId') && value === ''
-            ? null
-            : value,
+          : name === 'calibrationIntervalMonths'
+            ? parseInt(value) || 12
+            : (name === 'processAreaId' || name === 'controlLoopId') && value === ''
+              ? null
+              : value,
       };
 
       // Smart UX Rules:
@@ -326,6 +330,40 @@ export default function InstrumentNew() {
               placeholder="e.g. 0.5 for ±0.5%"
               value={formData.maxPermissibleError}
               onChange={handleChange}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+              Calibration Interval (Months) *
+            </label>
+            <input
+              type="number"
+              name="calibrationIntervalMonths"
+              required
+              min="1"
+              className="w-full bg-slate-900/60 border border-gray-700 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors font-mono"
+              value={formData.calibrationIntervalMonths || 12}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+              Last Calibration Date
+            </label>
+            <input
+              type="date"
+              name="lastCalibrationDate"
+              className="w-full bg-slate-900/60 border border-gray-700 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors font-mono text-sm"
+              value={formData.lastCalibrationDate ? new Date(formData.lastCalibrationDate).toISOString().split('T')[0] : ''}
+              onChange={(e) => {
+                const { value } = e.target;
+                setFormData(prev => ({
+                  ...prev,
+                  lastCalibrationDate: value ? new Date(value).toISOString() : null
+                }));
+              }}
             />
           </div>
         </div>

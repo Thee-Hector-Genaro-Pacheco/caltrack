@@ -19,6 +19,9 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     });
     const totalProcessAreas = await prisma.processArea.count();
     const totalControlLoops = await prisma.controlLoop.count();
+    const openWorkOrders = await prisma.workOrder.count({
+      where: { status: 'OPEN' },
+    });
 
     res.json({
       totalInstruments,
@@ -27,6 +30,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       recentAuditActivity,
       totalProcessAreas,
       totalControlLoops,
+      openWorkOrders,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

@@ -35,6 +35,11 @@ model Instrument {
   processArea         ProcessArea?        @relation(fields: [processAreaId], references: [id], onDelete: SetNull)
   controlLoopId       String?
   controlLoop         ControlLoop?        @relation(fields: [controlLoopId], references: [id], onDelete: SetNull)
+
+  calibrationIntervalMonths Int           @default(12)
+  lastCalibrationDate       DateTime?
+  nextCalibrationDueDate    DateTime?
+  workOrders                WorkOrder[]
 }
 
 model ProcessArea {
@@ -98,4 +103,33 @@ model AuditEvent {
   changedBy  String   // Technician name or email
   timestamp  DateTime @default(now())
   reason     String?
+}
+
+enum WorkOrderStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum WorkOrderPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model WorkOrder {
+  id                 String            @id @default(uuid())
+  workOrderNumber    String            @unique
+  instrumentId       String
+  instrument         Instrument        @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  status             WorkOrderStatus   @default(OPEN)
+  priority           WorkOrderPriority @default(MEDIUM)
+  assignedTechnician String?
+  scheduledDate      DateTime?
+  completedDate      DateTime?
+  description        String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 }

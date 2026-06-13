@@ -19,6 +19,10 @@ export interface Instrument {
   processArea?: ProcessArea | null;
   controlLoopId?: string | null;
   controlLoop?: ControlLoop | null;
+  calibrationIntervalMonths: number;
+  lastCalibrationDate?: Date | string | null;
+  nextCalibrationDueDate?: Date | string | null;
+  workOrders?: WorkOrder[];
 }
 
 export interface ProcessArea {
@@ -97,6 +101,9 @@ export interface CreateInstrumentDto {
   maxPermissibleError?: number; // e.g. 0.5
   processAreaId?: string | null;
   controlLoopId?: string | null;
+  calibrationIntervalMonths?: number;
+  lastCalibrationDate?: Date | string | null;
+  nextCalibrationDueDate?: Date | string | null;
 }
 
 export interface UpdateInstrumentDto {
@@ -113,6 +120,9 @@ export interface UpdateInstrumentDto {
   maxPermissibleError?: number;
   processAreaId?: string | null;
   controlLoopId?: string | null;
+  calibrationIntervalMonths?: number;
+  lastCalibrationDate?: Date | string | null;
+  nextCalibrationDueDate?: Date | string | null;
   reason: string; // Audit reason is required on update
 }
 
@@ -162,4 +172,42 @@ export interface DashboardStats {
   recentAuditActivity: AuditEvent[];
   totalProcessAreas: number;
   totalControlLoops: number;
+  openWorkOrders: number;
+}
+
+export type WorkOrderStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type WorkOrderPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+export interface WorkOrder {
+  id: string;
+  workOrderNumber: string;
+  instrumentId: string;
+  instrument?: Instrument;
+  status: WorkOrderStatus;
+  priority: WorkOrderPriority;
+  assignedTechnician?: string | null;
+  scheduledDate?: Date | string | null;
+  completedDate?: Date | string | null;
+  description?: string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export interface CreateWorkOrderDto {
+  instrumentId: string;
+  status?: WorkOrderStatus;
+  priority?: WorkOrderPriority;
+  assignedTechnician?: string;
+  scheduledDate?: Date | string;
+  description?: string;
+}
+
+export interface UpdateWorkOrderDto {
+  status?: WorkOrderStatus;
+  priority?: WorkOrderPriority;
+  assignedTechnician?: string | null;
+  scheduledDate?: Date | string | null;
+  completedDate?: Date | string | null;
+  description?: string | null;
+  reason: string;
 }

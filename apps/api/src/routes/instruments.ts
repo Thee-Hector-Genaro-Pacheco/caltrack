@@ -19,6 +19,9 @@ const createInstrumentSchema = z.object({
   maxPermissibleError: z.number().positive().optional(),
   processAreaId: z.string().uuid().nullable().optional(),
   controlLoopId: z.string().uuid().nullable().optional(),
+  calibrationIntervalMonths: z.number().int().positive().optional(),
+  lastCalibrationDate: z.string().nullable().optional(),
+  nextCalibrationDueDate: z.string().nullable().optional(),
 });
 
 const updateInstrumentSchema = createInstrumentSchema.partial().extend({

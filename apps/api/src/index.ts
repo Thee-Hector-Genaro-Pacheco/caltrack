@@ -8,6 +8,7 @@ import auditRouter from './routes/audit';
 import dashboardRouter from './routes/dashboard';
 import processAreasRouter from './routes/process-areas';
 import controlLoopsRouter from './routes/control-loops';
+import workOrdersRouter from './routes/work-orders';
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use('/api/audit', requireAuth, auditRouter);
 app.use('/api/dashboard', requireAuth, dashboardRouter);
 app.use('/api/process-areas', requireAuth, processAreasRouter);
 app.use('/api/control-loops', requireAuth, controlLoopsRouter);
+app.use('/api/work-orders', requireAuth, workOrdersRouter);
 
 // Global Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { DashboardStats } from '@caltrack/types';
-import { Activity, AlertTriangle, Database, Layers, RefreshCw } from 'lucide-react';
+import { Activity, AlertTriangle, Database, Layers, RefreshCw, ClipboardList } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDate } from '@caltrack/utils';
 
@@ -48,7 +48,7 @@ export default function Dashboard() {
         <p className="text-gray-400 mt-1">Real-time instrument calibration compliance metrics.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
         <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-primary">
           <div className="flex justify-between items-start">
             <div>
@@ -91,6 +91,21 @@ export default function Dashboard() {
           </div>
           <div className="mt-4 text-xs text-red-400">
             <span>Critical calibration gap</span>
+          </div>
+        </div>
+
+        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-primary">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Open Work Orders</p>
+              <h3 className="text-4xl font-extrabold text-indigo-400 mt-2">{stats.openWorkOrders}</h3>
+            </div>
+            <div className="p-3 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/25">
+              <ClipboardList size={24} />
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-indigo-300">
+            <Link to="/work-orders" className="hover:underline">View work orders →</Link>
           </div>
         </div>
 

@@ -1,5 +1,5 @@
 import { isSupabaseConfigured, supabase } from './supabase';
-import { Instrument, CalibrationRecord, AuditEvent, DashboardStats, CreateInstrumentDto, UpdateInstrumentDto, CreateCalibrationRecordDto, ProcessArea, CreateProcessAreaDto, ControlLoop, CreateControlLoopDto } from '@caltrack/types';
+import { Instrument, CalibrationRecord, AuditEvent, DashboardStats, CreateInstrumentDto, UpdateInstrumentDto, CreateCalibrationRecordDto, ProcessArea, CreateProcessAreaDto, ControlLoop, CreateControlLoopDto, WorkOrder, CreateWorkOrderDto, UpdateWorkOrderDto } from '@caltrack/types';
 
 // Mock local storage keys
 const MOCK_INSTRUMENTS_KEY = 'caltrack_mock_instruments';
@@ -7,6 +7,7 @@ const MOCK_CALIBRATIONS_KEY = 'caltrack_mock_calibrations';
 const MOCK_AUDIT_KEY = 'caltrack_mock_audits';
 const MOCK_PROCESS_AREAS_KEY = 'caltrack_mock_process_areas';
 const MOCK_CONTROL_LOOPS_KEY = 'caltrack_mock_control_loops';
+const MOCK_WORK_ORDERS_KEY = 'caltrack_mock_work_orders';
 
 // Base mock data generator if local storage is empty
 function initializeMockData() {
@@ -93,6 +94,9 @@ function initializeMockData() {
         maxPermissibleError: 0.25,
         processAreaId: 'area-10',
         controlLoopId: 'loop-101',
+        calibrationIntervalMonths: 12,
+        lastCalibrationDate: new Date(Date.now() - 30 * 24 * 3600000).toISOString(),
+        nextCalibrationDueDate: new Date(Date.now() + 335 * 24 * 3600000).toISOString(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       },
@@ -111,6 +115,9 @@ function initializeMockData() {
         maxPermissibleError: 0.5,
         processAreaId: 'area-12',
         controlLoopId: 'loop-215',
+        calibrationIntervalMonths: 12,
+        lastCalibrationDate: new Date(Date.now() - 366 * 24 * 3600000).toISOString(),
+        nextCalibrationDueDate: new Date(Date.now() - 1 * 24 * 3600000).toISOString(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       },
@@ -129,6 +136,9 @@ function initializeMockData() {
         maxPermissibleError: 0.75,
         processAreaId: 'area-12',
         controlLoopId: 'loop-215',
+        calibrationIntervalMonths: 12,
+        lastCalibrationDate: new Date(Date.now() - 400 * 24 * 3600000).toISOString(),
+        nextCalibrationDueDate: new Date(Date.now() - 35 * 24 * 3600000).toISOString(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       },
@@ -147,6 +157,9 @@ function initializeMockData() {
         maxPermissibleError: 0.25,
         processAreaId: 'area-15',
         controlLoopId: 'loop-301',
+        calibrationIntervalMonths: 12,
+        lastCalibrationDate: null,
+        nextCalibrationDueDate: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }
@@ -202,9 +215,52 @@ function initializeMockData() {
       }
     ];
 
+    const mockWorkOrders = [
+      {
+        id: 'wo-1',
+        workOrderNumber: 'WO-1001',
+        instrumentId: 'inst-1',
+        status: 'COMPLETED',
+        priority: 'MEDIUM',
+        assignedTechnician: 'Marcus Vance',
+        scheduledDate: new Date(Date.now() - 32 * 24 * 3600000).toISOString(),
+        completedDate: new Date(Date.now() - 30 * 24 * 3600000).toISOString(),
+        description: 'Routine annual calibration check.',
+        createdAt: new Date(Date.now() - 32 * 24 * 3600000).toISOString(),
+        updatedAt: new Date(Date.now() - 30 * 24 * 3600000).toISOString(),
+      },
+      {
+        id: 'wo-2',
+        workOrderNumber: 'WO-1002',
+        instrumentId: 'inst-2',
+        status: 'IN_PROGRESS',
+        priority: 'HIGH',
+        assignedTechnician: 'Elena Rostova',
+        scheduledDate: new Date(Date.now() - 2 * 24 * 3600000).toISOString(),
+        completedDate: null,
+        description: 'Drift detected on Honeywell sensor. Calibrate and adjust.',
+        createdAt: new Date(Date.now() - 2 * 24 * 3600000).toISOString(),
+        updatedAt: new Date(Date.now() - 2 * 24 * 3600000).toISOString(),
+      },
+      {
+        id: 'wo-3',
+        workOrderNumber: 'WO-1003',
+        instrumentId: 'inst-3',
+        status: 'OPEN',
+        priority: 'CRITICAL',
+        assignedTechnician: null,
+        scheduledDate: null,
+        completedDate: null,
+        description: 'Calibration overdue by >30 days. High priority scheduling.',
+        createdAt: new Date(Date.now() - 10 * 24 * 3600000).toISOString(),
+        updatedAt: new Date(Date.now() - 10 * 24 * 3600000).toISOString(),
+      }
+    ];
+
     localStorage.setItem(MOCK_INSTRUMENTS_KEY, JSON.stringify(mockInstruments));
     localStorage.setItem(MOCK_CALIBRATIONS_KEY, JSON.stringify(mockCalibrations));
     localStorage.setItem(MOCK_AUDIT_KEY, JSON.stringify(mockAudits));
+    localStorage.setItem(MOCK_WORK_ORDERS_KEY, JSON.stringify(mockWorkOrders));
   }
 }
 
@@ -217,12 +273,14 @@ const getMockCalibrations = (): CalibrationRecord[] => JSON.parse(localStorage.g
 const getMockAudits = (): AuditEvent[] => JSON.parse(localStorage.getItem(MOCK_AUDIT_KEY) || '[]');
 const getMockProcessAreas = (): any[] => JSON.parse(localStorage.getItem(MOCK_PROCESS_AREAS_KEY) || '[]');
 const getMockControlLoops = (): any[] => JSON.parse(localStorage.getItem(MOCK_CONTROL_LOOPS_KEY) || '[]');
+const getMockWorkOrders = (): any[] => JSON.parse(localStorage.getItem(MOCK_WORK_ORDERS_KEY) || '[]');
 
 const saveMockInstruments = (data: Instrument[]) => localStorage.setItem(MOCK_INSTRUMENTS_KEY, JSON.stringify(data));
 const saveMockCalibrations = (data: CalibrationRecord[]) => localStorage.setItem(MOCK_CALIBRATIONS_KEY, JSON.stringify(data));
 const saveMockAudits = (data: AuditEvent[]) => localStorage.setItem(MOCK_AUDIT_KEY, JSON.stringify(data));
 const saveMockProcessAreas = (data: any[]) => localStorage.setItem(MOCK_PROCESS_AREAS_KEY, JSON.stringify(data));
 const saveMockControlLoops = (data: any[]) => localStorage.setItem(MOCK_CONTROL_LOOPS_KEY, JSON.stringify(data));
+const saveMockWorkOrders = (data: any[]) => localStorage.setItem(MOCK_WORK_ORDERS_KEY, JSON.stringify(data));
 
 // Fetch helper with token injection and automatic mock fallback
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -271,6 +329,7 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
     const audits = getMockAudits();
     const areas = getMockProcessAreas();
     const loops = getMockControlLoops();
+    const wos = getMockWorkOrders();
     return {
       totalInstruments: insts.length,
       calibrationsDue: insts.filter(i => i.status === 'CALIBRATION_DUE').length,
@@ -278,6 +337,7 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
       recentAuditActivity: audits.slice(0, 5),
       totalProcessAreas: areas.length,
       totalControlLoops: loops.length,
+      openWorkOrders: wos.filter(w => w.status === 'OPEN').length,
     } as any as T;
   }
 
@@ -295,11 +355,23 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
     if (method === 'POST') {
       const body = JSON.parse(options.body as string) as CreateInstrumentDto;
       const insts = getMockInstruments();
+      const interval = body.calibrationIntervalMonths || 12;
+      let nextDueDate = body.nextCalibrationDueDate ? new Date(body.nextCalibrationDueDate).toISOString() : null;
+      const lastCalDate = body.lastCalibrationDate ? new Date(body.lastCalibrationDate).toISOString() : null;
+      if (!nextDueDate && lastCalDate) {
+        const d = new Date(lastCalDate);
+        d.setMonth(d.getMonth() + interval);
+        nextDueDate = d.toISOString();
+      }
+
       const newInstrument: Instrument = {
         ...body,
         id: `inst-${Date.now()}`,
         status: body.status || 'ACTIVE',
         maxPermissibleError: body.maxPermissibleError || 0.5,
+        calibrationIntervalMonths: interval,
+        lastCalibrationDate: lastCalDate,
+        nextCalibrationDueDate: nextDueDate,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -444,22 +516,48 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
       const calibrations = getMockCalibrations().filter(c => c.instrumentId === id);
       const loops = getMockControlLoops();
       const areas = getMockProcessAreas();
+      const workOrders = getMockWorkOrders().filter(w => w.instrumentId === id);
       return {
         ...inst,
         calibrations,
         controlLoop: loops.find(l => l.id === inst.controlLoopId),
         processArea: areas.find(a => a.id === inst.processAreaId),
+        workOrders,
       } as any as T;
     }
 
     if (method === 'PUT') {
       const body = JSON.parse(options.body as string) as UpdateInstrumentDto;
       const inst = insts[recordIdx];
+      const interval = body.calibrationIntervalMonths !== undefined 
+        ? body.calibrationIntervalMonths 
+        : inst.calibrationIntervalMonths;
+      const lastCal = body.lastCalibrationDate !== undefined 
+        ? body.lastCalibrationDate 
+        : inst.lastCalibrationDate;
+
+      let nextCal: string | null = null;
+      if (body.nextCalibrationDueDate !== undefined) {
+        nextCal = body.nextCalibrationDueDate ? new Date(body.nextCalibrationDueDate).toISOString() : null;
+      } else if (body.calibrationIntervalMonths !== undefined || body.lastCalibrationDate !== undefined) {
+        if (lastCal) {
+          const d = new Date(lastCal);
+          d.setMonth(d.getMonth() + interval);
+          nextCal = d.toISOString();
+        }
+      }
+
       const updatedInstrument = {
         ...inst,
         ...body,
+        lastCalibrationDate: body.lastCalibrationDate !== undefined 
+          ? (body.lastCalibrationDate ? new Date(body.lastCalibrationDate).toISOString() : null)
+          : inst.lastCalibrationDate,
         updatedAt: new Date().toISOString(),
       };
+      if (nextCal !== null || body.nextCalibrationDueDate === null) {
+        updatedInstrument.nextCalibrationDueDate = nextCal;
+      }
       
       // Calculate field changes for detailed audit trails
       const changedKeys: Record<string, any> = {};
@@ -579,8 +677,45 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
 
       const instIdx = insts.findIndex(i => i.id === body.instrumentId);
       if (instIdx !== -1) {
+        const targetInst = insts[instIdx];
+        const calDateStr = new Date(body.calibrationDate).toISOString();
+        const nextDueDate = new Date(calDateStr);
+        nextDueDate.setMonth(nextDueDate.getMonth() + (targetInst.calibrationIntervalMonths || 12));
+
         insts[instIdx].status = overallPass ? 'ACTIVE' : 'CALIBRATION_DUE';
+        insts[instIdx].lastCalibrationDate = calDateStr;
+        insts[instIdx].nextCalibrationDueDate = nextDueDate.toISOString();
         saveMockInstruments(insts);
+
+        // Auto-complete active work orders
+        const wos = getMockWorkOrders();
+        let woChanged = false;
+        wos.forEach((wo) => {
+          if (wo.instrumentId === body.instrumentId && (wo.status === 'OPEN' || wo.status === 'IN_PROGRESS')) {
+            const oldStatus = wo.status;
+            wo.status = 'COMPLETED';
+            wo.completedDate = new Date().toISOString();
+            wo.updatedAt = new Date().toISOString();
+            woChanged = true;
+
+            const auditsList = getMockAudits();
+            auditsList.unshift({
+              id: `aud-${Date.now()}-${wo.id}`,
+              entityType: 'WorkOrder',
+              entityId: wo.id,
+              action: 'UPDATE',
+              oldValue: { status: oldStatus },
+              newValue: { status: 'COMPLETED', completedDate: wo.completedDate },
+              changedBy: userEmail,
+              timestamp: new Date().toISOString(),
+              reason: 'Automatically completed upon calibration completion',
+            });
+            saveMockAudits(auditsList);
+          }
+        });
+        if (woChanged) {
+          saveMockWorkOrders(wos);
+        }
       }
 
       const audits = getMockAudits();
@@ -604,6 +739,183 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
   if (path === '/api/audit') {
     if (method === 'GET') {
       return getMockAudits() as any as T;
+    }
+  }
+
+  if (path.startsWith('/api/work-orders')) {
+    const parts = path.split('/');
+    if (parts.length > 2 && parts[2] === 'generate') {
+      if (method === 'POST') {
+        const insts = getMockInstruments();
+        const wos = getMockWorkOrders();
+        let generatedCount = 0;
+        
+        for (const inst of insts) {
+          if (inst.status === 'CALIBRATION_DUE' || inst.status === 'OVERDUE') {
+            const hasActive = wos.some(w => w.instrumentId === inst.id && (w.status === 'OPEN' || w.status === 'IN_PROGRESS'));
+            if (!hasActive) {
+              let nextNum = 1001;
+              if (wos.length > 0) {
+                const nums = wos.map(w => {
+                  const match = w.workOrderNumber.match(/WO-(\d+)/);
+                  return match ? parseInt(match[1]) : 1000;
+                });
+                nextNum = Math.max(...nums) + 1;
+              }
+              const workOrderNumber = `WO-${nextNum}`;
+              const priority = inst.status === 'OVERDUE' ? 'HIGH' : 'MEDIUM';
+              
+              const newWo = {
+                id: `wo-${Date.now()}-${generatedCount}`,
+                workOrderNumber,
+                instrumentId: inst.id,
+                status: 'OPEN',
+                priority,
+                assignedTechnician: null,
+                scheduledDate: null,
+                completedDate: null,
+                description: `Automated maintenance work order generated due to compliance status: ${inst.status.replace('_', ' ')}`,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              };
+              
+              wos.unshift(newWo);
+              
+              const auditsList = getMockAudits();
+              auditsList.unshift({
+                id: `aud-${Date.now()}-${generatedCount}`,
+                entityType: 'WorkOrder',
+                entityId: newWo.id,
+                action: 'CREATE',
+                oldValue: null,
+                newValue: newWo,
+                changedBy: userEmail,
+                timestamp: new Date().toISOString(),
+                reason: 'System auto-generated for compliance matching',
+              });
+              saveMockAudits(auditsList);
+              
+              generatedCount++;
+            }
+          }
+        }
+        if (generatedCount > 0) {
+          saveMockWorkOrders(wos);
+        }
+        return { generatedCount } as any as T;
+      }
+    } else if (parts.length > 2 && parts[2] !== '') {
+      const id = parts[2];
+      const wos = getMockWorkOrders();
+      const idx = wos.findIndex(w => w.id === id);
+      if (idx === -1) throw new Error('Work Order not found');
+
+      if (method === 'PATCH') {
+        const oldWo = wos[idx];
+        const body = JSON.parse(options.body as string);
+        const { reason, ...updateData } = body;
+        
+        const updatedWo = {
+          ...oldWo,
+          ...updateData,
+          updatedAt: new Date().toISOString(),
+        };
+        
+        if (updateData.status === 'COMPLETED' && !updatedWo.completedDate) {
+          updatedWo.completedDate = new Date().toISOString();
+        }
+        
+        wos[idx] = updatedWo;
+        saveMockWorkOrders(wos);
+        
+        const changedKeys: Record<string, any> = {};
+        const originalKeys: Record<string, any> = {};
+        for (const k of Object.keys(updateData)) {
+          if (JSON.stringify(oldWo[k as keyof typeof oldWo]) !== JSON.stringify(updateData[k])) {
+            changedKeys[k] = updateData[k];
+            originalKeys[k] = oldWo[k as keyof typeof oldWo];
+          }
+        }
+        if (Object.keys(changedKeys).length > 0) {
+          const auditsList = getMockAudits();
+          auditsList.unshift({
+            id: `aud-${Date.now()}`,
+            entityType: 'WorkOrder',
+            entityId: id,
+            action: 'UPDATE',
+            oldValue: originalKeys,
+            newValue: changedKeys,
+            changedBy: userEmail,
+            timestamp: new Date().toISOString(),
+            reason: reason || 'Work order details updated',
+          });
+          saveMockAudits(auditsList);
+        }
+        
+        const insts = getMockInstruments();
+        return {
+          ...updatedWo,
+          instrument: insts.find(i => i.id === updatedWo.instrumentId),
+        } as any as T;
+      }
+    } else {
+      if (method === 'GET') {
+        const wos = getMockWorkOrders();
+        const insts = getMockInstruments();
+        return wos.map(w => ({
+          ...w,
+          instrument: insts.find(i => i.id === w.instrumentId),
+        })) as any as T;
+      }
+      if (method === 'POST') {
+        const body = JSON.parse(options.body as string);
+        const wos = getMockWorkOrders();
+        
+        let nextNum = 1001;
+        if (wos.length > 0) {
+          const nums = wos.map(w => {
+            const match = w.workOrderNumber.match(/WO-(\d+)/);
+            return match ? parseInt(match[1]) : 1000;
+          });
+          nextNum = Math.max(...nums) + 1;
+        }
+        const workOrderNumber = `WO-${nextNum}`;
+        
+        const newWo = {
+          ...body,
+          id: `wo-${Date.now()}`,
+          workOrderNumber,
+          status: body.status || 'OPEN',
+          priority: body.priority || 'MEDIUM',
+          assignedTechnician: body.assignedTechnician || null,
+          scheduledDate: body.scheduledDate ? new Date(body.scheduledDate).toISOString() : null,
+          completedDate: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        wos.unshift(newWo);
+        saveMockWorkOrders(wos);
+        
+        const auditsList = getMockAudits();
+        auditsList.unshift({
+          id: `aud-${Date.now()}`,
+          entityType: 'WorkOrder',
+          entityId: newWo.id,
+          action: 'CREATE',
+          oldValue: null,
+          newValue: newWo,
+          changedBy: userEmail,
+          timestamp: new Date().toISOString(),
+          reason: 'Work Order Created',
+        });
+        saveMockAudits(auditsList);
+        
+        const insts = getMockInstruments();
+        return {
+          ...newWo,
+          instrument: insts.find(i => i.id === newWo.instrumentId),
+        } as any as T;
+      }
     }
   }
 
@@ -643,5 +955,17 @@ export const api = {
     body: JSON.stringify(dto),
   }),
   getLoopInstruments: (id: string) => request<Instrument[]>(`/api/control-loops/${id}/instruments`),
+  getWorkOrders: () => request<WorkOrder[]>('/api/work-orders'),
+  createWorkOrder: (dto: CreateWorkOrderDto) => request<WorkOrder>('/api/work-orders', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  }),
+  updateWorkOrder: (id: string, dto: UpdateWorkOrderDto) => request<WorkOrder>(`/api/work-orders/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(dto),
+  }),
+  generateWorkOrders: () => request<{ generatedCount: number }>('/api/work-orders/generate', {
+    method: 'POST',
+  }),
 };
 export default api;

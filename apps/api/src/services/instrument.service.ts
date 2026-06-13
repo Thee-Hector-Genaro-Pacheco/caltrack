@@ -22,12 +22,24 @@ export async function getInstrumentById(id: string) {
       calibrations: {
         orderBy: { calibrationDate: 'desc' },
         include: { testPoints: true }
+      },
+      workOrders: {
+        orderBy: { createdAt: 'desc' }
       }
     },
   });
 }
 
 export async function createInstrument(dto: CreateInstrumentDto, changedBy: string) {
+  let nextCalibrationDueDate = dto.nextCalibrationDueDate ? new Date(dto.nextCalibrationDueDate) : null;
+  const lastCalibrationDate = dto.lastCalibrationDate ? new Date(dto.lastCalibrationDate) : null;
+  const interval = dto.calibrationIntervalMonths ?? 12;
+
+  if (!nextCalibrationDueDate && lastCalibrationDate) {
+    nextCalibrationDueDate = new Date(lastCalibrationDate);
+    nextCalibrationDueDate.setMonth(nextCalibrationDueDate.getMonth() + interval);
+  }
+
   const instrument = await prisma.instrument.create({
     data: {
       tagNumber: dto.tagNumber,
@@ -43,6 +55,9 @@ export async function createInstrument(dto: CreateInstrumentDto, changedBy: stri
       maxPermissibleError: dto.maxPermissibleError ?? 0.5,
       processAreaId: dto.processAreaId || null,
       controlLoopId: dto.controlLoopId || null,
+      calibrationIntervalMonths: interval,
+      lastCalibrationDate,
+      nextCalibrationDueDate,
     },
   });
 
@@ -70,9 +85,37 @@ export async function updateInstrument(id: string, dto: UpdateInstrumentDto, cha
 
   const { reason, ...updateData } = dto;
 
+  const interval = updateData.calibrationIntervalMonths !== undefined 
+    ? updateData.calibrationIntervalMonths 
+    : oldInstrument.calibrationIntervalMonths;
+  const lastCal = updateData.lastCalibrationDate !== undefined 
+    ? updateData.lastCalibrationDate 
+    : oldInstrument.lastCalibrationDate;
+
+  let nextCal: Date | null = null;
+  if (updateData.nextCalibrationDueDate !== undefined) {
+    nextCal = updateData.nextCalibrationDueDate ? new Date(updateData.nextCalibrationDueDate) : null;
+  } else if (updateData.calibrationIntervalMonths !== undefined || updateData.lastCalibrationDate !== undefined) {
+    if (lastCal) {
+      const d = new Date(lastCal);
+      d.setMonth(d.getMonth() + interval!);
+      nextCal = d;
+    }
+  }
+
+  const dataToUpdate: any = {
+    ...updateData,
+  };
+  if (updateData.lastCalibrationDate !== undefined) {
+    dataToUpdate.lastCalibrationDate = updateData.lastCalibrationDate ? new Date(updateData.lastCalibrationDate) : null;
+  }
+  if (nextCal !== null || updateData.nextCalibrationDueDate === null) {
+    dataToUpdate.nextCalibrationDueDate = nextCal;
+  }
+
   const updatedInstrument = await prisma.instrument.update({
     where: { id },
-    data: updateData,
+    data: dataToUpdate,
   });
 
   const { oldValue, newValue } = getObjectDiff(oldInstrument, updatedInstrument);
@@ -182,10 +225,46 @@ export async function addCalibrationRecord(dto: CreateCalibrationRecordDto, chan
   });
 
   const nextStatus = overallPass ? 'ACTIVE' : 'CALIBRATION_DUE';
+  const calibrationDate = new Date(dto.calibrationDate);
+  const nextCalibrationDueDate = new Date(calibrationDate);
+  nextCalibrationDueDate.setMonth(nextCalibrationDueDate.getMonth() + (instrument.calibrationIntervalMonths || 12));
+
   await prisma.instrument.update({
     where: { id: dto.instrumentId },
-    data: { status: nextStatus },
+    data: { 
+      status: nextStatus,
+      lastCalibrationDate: calibrationDate,
+      nextCalibrationDueDate,
+    },
   });
+
+  // Auto-complete open or in-progress work orders for this instrument
+  const activeWorkOrders = await prisma.workOrder.findMany({
+    where: {
+      instrumentId: dto.instrumentId,
+      status: { in: ['OPEN', 'IN_PROGRESS'] },
+    },
+  });
+
+  for (const wo of activeWorkOrders) {
+    const updatedWo = await prisma.workOrder.update({
+      where: { id: wo.id },
+      data: {
+        status: 'COMPLETED',
+        completedDate: new Date(),
+      },
+    });
+
+    await createAuditEvent({
+      entityType: 'WorkOrder',
+      entityId: wo.id,
+      action: 'UPDATE',
+      oldValue: { status: wo.status, completedDate: wo.completedDate },
+      newValue: { status: 'COMPLETED', completedDate: updatedWo.completedDate },
+      changedBy,
+      reason: 'Automatically completed upon calibration completion',
+    });
+  }
 
   await createAuditEvent({
     entityType: 'CalibrationRecord',

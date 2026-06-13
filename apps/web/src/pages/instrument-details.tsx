@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../lib/api';
-import { Instrument, CalibrationRecord } from '@caltrack/types';
-import { ArrowLeft, Calendar, User, FileText, Plus, ShieldAlert, Trash2, Edit3, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { Instrument, CalibrationRecord, WorkOrderPriority } from '@caltrack/types';
+import { ArrowLeft, Calendar, User, FileText, Plus, ShieldAlert, Trash2, Edit3, X, ChevronDown, ChevronRight, ClipboardList } from 'lucide-react';
 import { formatDate } from '@caltrack/utils';
 
 export default function InstrumentDetails() {
@@ -23,6 +23,14 @@ export default function InstrumentDetails() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  // Work Order States
+  const [isWoModalOpen, setIsWoModalOpen] = useState(false);
+  const [woPriority, setWoPriority] = useState<WorkOrderPriority>('MEDIUM');
+  const [woTechnician, setWoTechnician] = useState('');
+  const [woDate, setWoDate] = useState('');
+  const [woDescription, setWoDescription] = useState('');
+  const [woSubmitting, setWoSubmitting] = useState(false);
 
   useEffect(() => {
     if (isCalModalOpen && instrument) {
@@ -80,6 +88,10 @@ export default function InstrumentDetails() {
     if (id) {
       fetchDetails();
     }
+    const query = new URLSearchParams(window.location.search);
+    if (query.get('logCal') === 'true') {
+      setIsCalModalOpen(true);
+    }
   }, [id]);
 
   const fetchDetails = () => {
@@ -133,6 +145,30 @@ export default function InstrumentDetails() {
       alert(err.message || 'Failed to decommission instrument.');
     } finally {
       setDeleteSubmitting(false);
+    }
+  };
+
+  const handleAddWorkOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setWoSubmitting(true);
+    try {
+      await api.createWorkOrder({
+        instrumentId: id!,
+        priority: woPriority,
+        assignedTechnician: woTechnician || undefined,
+        scheduledDate: woDate ? new Date(woDate).toISOString() : undefined,
+        description: woDescription || undefined,
+        status: 'OPEN'
+      });
+      setIsWoModalOpen(false);
+      setWoTechnician('');
+      setWoDate('');
+      setWoDescription('');
+      fetchDetails();
+    } catch (err: any) {
+      alert(err.message || 'Failed to create work order.');
+    } finally {
+      setWoSubmitting(false);
     }
   };
 
@@ -212,6 +248,28 @@ export default function InstrumentDetails() {
               <span className="block text-gray-500 text-xs uppercase tracking-wider font-semibold">Max Permissible Error (MPE)</span>
               <span className="text-white font-medium mt-0.5 block font-mono">
                 ±{instrument.maxPermissibleError}% of Span
+              </span>
+            </div>
+            <div>
+              <span className="block text-gray-500 text-xs uppercase tracking-wider font-semibold">Calibration Interval</span>
+              <span className="text-white font-medium mt-0.5 block">
+                {instrument.calibrationIntervalMonths} Months
+              </span>
+            </div>
+            <div>
+              <span className="block text-gray-500 text-xs uppercase tracking-wider font-semibold">Last Calibration Date</span>
+              <span className="text-white font-medium mt-0.5 block font-mono">
+                {instrument.lastCalibrationDate ? formatDate(instrument.lastCalibrationDate) : 'Never Calibrated'}
+              </span>
+            </div>
+            <div>
+              <span className="block text-gray-500 text-xs uppercase tracking-wider font-semibold">Next Calibration Due</span>
+              <span className={`font-semibold mt-0.5 block font-mono ${
+                instrument.status === 'OVERDUE' ? 'text-red-500' :
+                instrument.status === 'CALIBRATION_DUE' ? 'text-amber-500' :
+                'text-emerald-400'
+              }`}>
+                {instrument.nextCalibrationDueDate ? formatDate(instrument.nextCalibrationDueDate) : 'Unscheduled'}
               </span>
             </div>
             <div className="sm:col-span-2">
@@ -443,6 +501,93 @@ export default function InstrumentDetails() {
         )}
       </div>
 
+      {/* Linked Work Orders Log */}
+      <div className="glass-card p-6 rounded-xl border border-white/5">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <ClipboardList className="text-indigo-400" size={20} />
+            Linked Calibration Work Orders
+          </h3>
+          {!instrument.workOrders?.some(w => w.status === 'OPEN' || w.status === 'IN_PROGRESS') && (
+            <button
+              onClick={() => setIsWoModalOpen(true)}
+              className="btn-transition bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 font-semibold py-1.5 px-3 rounded-lg text-xs flex items-center gap-1.5"
+            >
+              <Plus size={14} />
+              Schedule Work Order
+            </button>
+          )}
+        </div>
+
+        {!instrument.workOrders || instrument.workOrders.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 text-sm border border-dashed border-gray-800 rounded-lg">
+            No work orders currently linked to this instrument. Click Schedule Work Order to create one.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-800 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-slate-900/30">
+                  <th className="py-2.5 px-4">WO Number</th>
+                  <th className="py-2.5 px-4">Priority</th>
+                  <th className="py-2.5 px-4">Status</th>
+                  <th className="py-2.5 px-4">Assigned Tech</th>
+                  <th className="py-2.5 px-4">Scheduled Date</th>
+                  <th className="py-2.5 px-4">Completed Date</th>
+                  <th className="py-2.5 px-4 w-1/3">Description</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-800/50 text-sm text-gray-300">
+                {instrument.workOrders.map((wo) => (
+                  <tr key={wo.id} className="hover:bg-white/5 transition-colors">
+                    <td className="py-3 px-4 font-mono font-bold text-white">{wo.workOrderNumber}</td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        wo.priority === 'CRITICAL' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                        wo.priority === 'HIGH' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' :
+                        wo.priority === 'MEDIUM' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                        'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                      }`}>
+                        {wo.priority}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-flex px-2.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        wo.status === 'OPEN' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' :
+                        wo.status === 'IN_PROGRESS' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                        wo.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                        'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                      }`}>
+                        {wo.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-xs">
+                      {wo.assignedTechnician ? (
+                        <span className="flex items-center gap-1">
+                          <User size={13} className="text-gray-500" />
+                          {wo.assignedTechnician}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500 italic">Unassigned</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 font-mono text-xs text-gray-400">
+                      {wo.scheduledDate ? formatDate(wo.scheduledDate) : '-'}
+                    </td>
+                    <td className="py-3 px-4 font-mono text-xs text-gray-400">
+                      {wo.completedDate ? formatDate(wo.completedDate) : '-'}
+                    </td>
+                    <td className="py-3 px-4 text-xs text-gray-400 truncate max-w-xs" title={wo.description || ''}>
+                      {wo.description || '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {isCalModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 overflow-y-auto py-8">
           <div className="w-full max-w-3xl glass-panel p-6 rounded-2xl glow-primary relative my-auto">
@@ -646,6 +791,94 @@ export default function InstrumentDetails() {
                   className="btn-transition bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-6 rounded-lg"
                 >
                   {deleteSubmitting ? 'Processing...' : 'Confirm Decommission'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isWoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="w-full max-w-md glass-panel p-6 rounded-2xl glow-primary border border-white/5 relative">
+            <button
+              onClick={() => setIsWoModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-gray-400 hover:bg-white/5 hover:text-white"
+            >
+              <X size={18} />
+            </button>
+            <h3 className="text-xl font-bold text-white mb-1">Create Calibration Work Order</h3>
+            <p className="text-gray-400 text-xs mb-6">Schedule calibration validation maintenance task for {instrument.tagNumber}.</p>
+
+            <form onSubmit={handleAddWorkOrder} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                  Priority
+                </label>
+                <select
+                  name="priority"
+                  className="w-full bg-slate-900 border border-gray-700 rounded-lg py-2.5 px-4 text-white focus:outline-none"
+                  value={woPriority}
+                  onChange={(e) => setWoPriority(e.target.value as any)}
+                >
+                  <option value="LOW">LOW</option>
+                  <option value="MEDIUM">MEDIUM</option>
+                  <option value="HIGH">HIGH</option>
+                  <option value="CRITICAL">CRITICAL</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                  Assigned Technician
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Elena Rostova"
+                  className="w-full bg-slate-900 border border-gray-700 rounded-lg py-2.5 px-4 text-white focus:outline-none"
+                  value={woTechnician}
+                  onChange={(e) => setWoTechnician(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                  Scheduled Date
+                </label>
+                <input
+                  type="date"
+                  className="w-full bg-slate-900 border border-gray-700 rounded-lg py-2.5 px-4 text-white focus:outline-none font-mono text-sm"
+                  value={woDate}
+                  onChange={(e) => setWoDate(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                  Task Description / Work Instructions
+                </label>
+                <textarea
+                  placeholder="e.g. Conduct passing 5-point verification check against ±0.5% MPE spec"
+                  className="w-full bg-slate-900 border border-gray-700 rounded-lg py-2.5 px-4 text-white focus:outline-none h-24 resize-none"
+                  value={woDescription}
+                  onChange={(e) => setWoDescription(e.target.value)}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-800 text-sm">
+                <button
+                  type="button"
+                  onClick={() => setIsWoModalOpen(false)}
+                  className="px-4 py-2 text-gray-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={woSubmitting}
+                  className="btn-transition bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-6 rounded-lg"
+                >
+                  {woSubmitting ? 'Creating...' : 'Schedule Order'}
                 </button>
               </div>
             </form>

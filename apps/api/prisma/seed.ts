@@ -109,6 +109,7 @@ async function main() {
     location: string;
     maxPermissibleError: number;
     status: InstrumentStatus;
+    calibrationIntervalMonths?: number;
     calibrations: {
       calibrationDate: Date;
       technicianName: string;
@@ -130,6 +131,16 @@ async function main() {
       processAreaId = area12.id;
       controlLoopId = loop215.id;
     }
+
+    // Auto-calculate calibration scheduling dates
+    const sortedCals = [...data.calibrations].sort((a, b) => b.calibrationDate.getTime() - a.calibrationDate.getTime());
+    const lastCalibrationDate = sortedCals.length > 0 ? sortedCals[0].calibrationDate : null;
+    const interval = data.calibrationIntervalMonths ?? 12;
+    let nextCalibrationDueDate = null;
+    if (lastCalibrationDate) {
+      nextCalibrationDueDate = new Date(lastCalibrationDate);
+      nextCalibrationDueDate.setMonth(nextCalibrationDueDate.getMonth() + interval);
+    }
     
     // 1. Create Instrument
     const instrument = await prisma.instrument.create({
@@ -147,6 +158,9 @@ async function main() {
         status: data.status,
         processAreaId,
         controlLoopId,
+        calibrationIntervalMonths: interval,
+        lastCalibrationDate,
+        nextCalibrationDueDate,
       }
     });
 
@@ -569,6 +583,83 @@ async function main() {
       }
     ]
   });
+
+  console.log('Seeding Work Orders...');
+  
+  const pt101a = await prisma.instrument.findUnique({ where: { tagNumber: '10-PT-101A' } });
+  const ft402 = await prisma.instrument.findUnique({ where: { tagNumber: '20-FT-402' } });
+  const pi203 = await prisma.instrument.findUnique({ where: { tagNumber: '12-PI-203' } });
+
+  if (pt101a) {
+    const wo1 = await prisma.workOrder.create({
+      data: {
+        workOrderNumber: 'WO-1001',
+        instrumentId: pt101a.id,
+        status: 'COMPLETED',
+        priority: 'MEDIUM',
+        assignedTechnician: 'Marcus Vance',
+        scheduledDate: new Date(Date.now() - 32 * 24 * 3600000),
+        completedDate: new Date(Date.now() - 30 * 24 * 3600000),
+        description: 'Routine annual calibration check.',
+      },
+    });
+    await prisma.auditEvent.create({
+      data: {
+        entityType: 'WorkOrder',
+        entityId: wo1.id,
+        action: 'CREATE',
+        newValue: wo1 as any,
+        changedBy: 'system@caltrack.com',
+        reason: 'Work Order Seeding',
+      },
+    });
+  }
+
+  if (ft402) {
+    const wo2 = await prisma.workOrder.create({
+      data: {
+        workOrderNumber: 'WO-1002',
+        instrumentId: ft402.id,
+        status: 'IN_PROGRESS',
+        priority: 'HIGH',
+        assignedTechnician: 'Elena Rostova',
+        scheduledDate: new Date(Date.now() - 2 * 24 * 3600000),
+        description: 'Drift detected on Coriolis sensor. Calibrate and adjust.',
+      },
+    });
+    await prisma.auditEvent.create({
+      data: {
+        entityType: 'WorkOrder',
+        entityId: wo2.id,
+        action: 'CREATE',
+        newValue: wo2 as any,
+        changedBy: 'system@caltrack.com',
+        reason: 'Work Order Seeding',
+      },
+    });
+  }
+
+  if (pi203) {
+    const wo3 = await prisma.workOrder.create({
+      data: {
+        workOrderNumber: 'WO-1003',
+        instrumentId: pi203.id,
+        status: 'OPEN',
+        priority: 'CRITICAL',
+        description: 'Calibration overdue by >30 days. High priority scheduling.',
+      },
+    });
+    await prisma.auditEvent.create({
+      data: {
+        entityType: 'WorkOrder',
+        entityId: wo3.id,
+        action: 'CREATE',
+        newValue: wo3 as any,
+        changedBy: 'system@caltrack.com',
+        reason: 'Work Order Seeding',
+      },
+    });
+  }
 
   console.log('Seeding finished successfully.');
 }
