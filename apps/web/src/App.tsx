@@ -12,7 +12,8 @@ import ProcessAreas from './pages/process-areas';
 import ControlLoops from './pages/control-loops';
 import LoopDetails from './pages/loop-details';
 import WorkOrders from './pages/work-orders';
-import { Database, ShieldCheck, Activity, LogOut, LayoutDashboard, User, Layers, RefreshCw, ClipboardList } from 'lucide-react';
+import Approvals from './pages/approvals';
+import { Database, ShieldCheck, Activity, LogOut, LayoutDashboard, User, Layers, RefreshCw, ClipboardList, ClipboardCheck } from 'lucide-react';
 
 function AppLayout({ children, userEmail, handleLogout }: { children: React.ReactNode, userEmail: string, handleLogout: () => void }) {
   const location = useLocation();
@@ -77,6 +78,17 @@ function AppLayout({ children, userEmail, handleLogout }: { children: React.Reac
             >
               <ClipboardList size={18} />
               Work Orders
+            </Link>
+            <Link
+              to="/approvals"
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                isLinkActive('/approvals')
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10'
+                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <ClipboardCheck size={18} />
+              Approvals
             </Link>
             <Link
               to="/instruments"
@@ -206,6 +218,7 @@ export default function App() {
                   <Route path="/control-loops" element={<ControlLoops />} />
                   <Route path="/control-loops/:id" element={<LoopDetails />} />
                   <Route path="/work-orders" element={<WorkOrders />} />
+                  <Route path="/approvals" element={<Approvals />} />
                   <Route path="/instruments" element={<InstrumentsList />} />
                   <Route path="/instruments/new" element={<InstrumentNew />} />
                   <Route path="/instruments/:id" element={<InstrumentDetails />} />

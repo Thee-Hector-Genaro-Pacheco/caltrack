@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../lib/api';
 import { Instrument, CalibrationRecord, WorkOrderPriority } from '@caltrack/types';
-import { ArrowLeft, Calendar, User, FileText, Plus, ShieldAlert, Trash2, Edit3, X, ChevronDown, ChevronRight, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Calendar, User, FileText, Plus, ShieldAlert, Trash2, Edit3, X, ChevronDown, ChevronRight, ClipboardList, Fingerprint, Check } from 'lucide-react';
 import { formatDate } from '@caltrack/utils';
 
 export default function InstrumentDetails() {
@@ -31,6 +31,19 @@ export default function InstrumentDetails() {
   const [woDate, setWoDate] = useState('');
   const [woDescription, setWoDescription] = useState('');
   const [woSubmitting, setWoSubmitting] = useState(false);
+
+  // Compliance Review States
+  const [reviewCal, setReviewCal] = useState<CalibrationRecord | null>(null);
+  const [isSubmitReviewOpen, setIsSubmitReviewOpen] = useState(false);
+  const [submitReviewForm, setSubmitReviewForm] = useState({ signerName: '', signerRole: 'TECHNICIAN' as any });
+  
+  const [isApproveReviewOpen, setIsApproveReviewOpen] = useState(false);
+  const [approveReviewForm, setApproveReviewForm] = useState({ signerName: '', signerRole: 'SUPERVISOR' as any });
+  
+  const [isRejectReviewOpen, setIsRejectReviewOpen] = useState(false);
+  const [rejectReviewForm, setRejectReviewForm] = useState({ signerName: '', signerRole: 'QA' as any, reason: '' });
+  
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   useEffect(() => {
     if (isCalModalOpen && instrument) {
@@ -169,6 +182,103 @@ export default function InstrumentDetails() {
       alert(err.message || 'Failed to create work order.');
     } finally {
       setWoSubmitting(false);
+    }
+  };
+
+  const handleOpenSubmitReview = (cal: CalibrationRecord) => {
+    setReviewCal(cal);
+    setSubmitReviewForm({ signerName: '', signerRole: 'TECHNICIAN' });
+    setIsSubmitReviewOpen(true);
+  };
+
+  const handleOpenApproveReview = (cal: CalibrationRecord) => {
+    setReviewCal(cal);
+    setApproveReviewForm({ signerName: '', signerRole: 'SUPERVISOR' });
+    setIsApproveReviewOpen(true);
+  };
+
+  const handleOpenRejectReview = (cal: CalibrationRecord) => {
+    setReviewCal(cal);
+    setRejectReviewForm({ signerName: '', signerRole: 'QA', reason: '' });
+    setIsRejectReviewOpen(true);
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewCal) return;
+    if (!submitReviewForm.signerName.trim() || submitReviewForm.signerName.length < 2) {
+      alert('Please enter a valid signer name.');
+      return;
+    }
+    setReviewSubmitting(true);
+    try {
+      await api.submitCalibration(reviewCal.id, submitReviewForm.signerName, submitReviewForm.signerRole);
+      setIsSubmitReviewOpen(false);
+      setReviewCal(null);
+      fetchDetails();
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit review.');
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const handleApproveReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewCal) return;
+    if (!approveReviewForm.signerName.trim() || approveReviewForm.signerName.length < 2) {
+      alert('Please enter a valid signer name.');
+      return;
+    }
+    setReviewSubmitting(true);
+    try {
+      await api.approveCalibration(reviewCal.id, approveReviewForm.signerName, approveReviewForm.signerRole);
+      setIsApproveReviewOpen(false);
+      setReviewCal(null);
+      fetchDetails();
+    } catch (err: any) {
+      alert(err.message || 'Failed to approve calibration.');
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const handleRejectReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewCal) return;
+    if (!rejectReviewForm.signerName.trim() || rejectReviewForm.signerName.length < 2) {
+      alert('Please enter a valid signer name.');
+      return;
+    }
+    if (!rejectReviewForm.reason.trim() || rejectReviewForm.reason.length < 4) {
+      alert('Please enter a valid reason.');
+      return;
+    }
+    setReviewSubmitting(true);
+    try {
+      await api.rejectCalibration(reviewCal.id, rejectReviewForm.signerName, rejectReviewForm.signerRole, rejectReviewForm.reason);
+      setIsRejectReviewOpen(false);
+      setReviewCal(null);
+      fetchDetails();
+    } catch (err: any) {
+      alert(err.message || 'Failed to reject calibration.');
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'DRAFT':
+        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-500/15 text-slate-400 border border-slate-500/20">DRAFT</span>;
+      case 'PENDING_REVIEW':
+        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">PENDING REVIEW</span>;
+      case 'APPROVED':
+        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">APPROVED</span>;
+      case 'REJECTED':
+        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/20">REJECTED</span>;
+      default:
+        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-500/15 text-slate-400 border border-slate-500/20">{status}</span>;
     }
   };
 
@@ -371,6 +481,7 @@ export default function InstrumentDetails() {
                   <th className="py-3 px-4">As Found ({instrument.signalType === '4-20 mA' ? 'mA' : instrument.engineeringUnits})</th>
                   <th className="py-3 px-4">As Left ({instrument.signalType === '4-20 mA' ? 'mA' : instrument.engineeringUnits})</th>
                   <th className="py-3 px-4">Outcome</th>
+                  <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4">Notes</th>
                 </tr>
               </thead>
@@ -417,6 +528,9 @@ export default function InstrumentDetails() {
                             {cal.passFail ? 'PASS' : 'FAIL'}
                           </span>
                         </td>
+                        <td className="py-3.5 px-4">
+                          {getStatusBadge(cal.status)}
+                        </td>
                         <td className="py-3.5 px-4 text-xs text-gray-400 max-w-xs truncate" title={cal.notes || ''}>
                           <span className="flex items-center gap-1">
                             <FileText size={14} className="text-gray-600 shrink-0" />
@@ -426,7 +540,7 @@ export default function InstrumentDetails() {
                       </tr>
                       {isExpanded && (
                         <tr>
-                          <td colSpan={7} className="bg-slate-950/40 p-4 border-b border-gray-800">
+                          <td colSpan={8} className="bg-slate-950/40 p-4 border-b border-gray-800">
                             <div className="space-y-3">
                               <div className="flex items-center justify-between">
                                 <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400">
@@ -488,6 +602,78 @@ export default function InstrumentDetails() {
                                   Legacy/single-point calibration record. As Found: {cal.asFound ?? '-'}, As Left: {cal.asLeft ?? '-'}
                                 </div>
                               )}
+
+                              {/* Electronic Signatures Section */}
+                              <div className="space-y-2 mt-4">
+                                <h5 className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                                  <Fingerprint size={12} className="text-indigo-400" />
+                                  Electronic Signatures & Review Trail
+                                </h5>
+                                {cal.signatures && cal.signatures.length > 0 ? (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    {cal.signatures.map((sig) => (
+                                      <div key={sig.id} className="p-2.5 bg-[#090d16] border border-gray-800 rounded-lg flex items-center justify-between text-xs">
+                                        <div>
+                                          <div className="font-semibold text-gray-300">
+                                            {sig.signerName} <span className="text-gray-500 font-medium">({sig.signerRole})</span>
+                                          </div>
+                                          <div className="text-[10px] text-gray-500 mt-0.5">
+                                            Meaning: <span className="text-indigo-400 font-semibold">{sig.meaning}</span> &bull; {new Date(sig.signedAt).toLocaleString()}
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
+                                          <span className="block text-[8px] uppercase text-gray-600 font-bold">SHA-256 Checksum</span>
+                                          <span className="font-mono text-[9px] text-indigo-400 bg-indigo-500/5 px-1.5 py-0.5 rounded border border-indigo-500/10" title={sig.signatureHash}>
+                                            {sig.signatureHash.slice(0, 8)}...{sig.signatureHash.slice(-8)}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-gray-500 italic">No signatures recorded for this draft calibration.</div>
+                                )}
+                              </div>
+
+                              {/* Action Buttons for this Calibration Record */}
+                              <div className="flex gap-2.5 pt-3 border-t border-gray-900/60 mt-4">
+                                {(cal.status === 'DRAFT' || cal.status === 'REJECTED') && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenSubmitReview(cal);
+                                    }}
+                                    className="px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-all flex items-center gap-1.5 shadow-md shadow-indigo-600/10"
+                                  >
+                                    <Fingerprint size={13} />
+                                    Submit for Review
+                                  </button>
+                                )}
+                                {cal.status === 'PENDING_REVIEW' && (
+                                  <>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenApproveReview(cal);
+                                      }}
+                                      className="px-3 py-1.5 rounded bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 font-semibold text-xs transition-all flex items-center gap-1.5"
+                                    >
+                                      <Check size={13} />
+                                      Sign & Approve
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenRejectReview(cal);
+                                      }}
+                                      className="px-3 py-1.5 rounded bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-500/20 font-semibold text-xs transition-all flex items-center gap-1.5"
+                                    >
+                                      <X size={13} />
+                                      Reject Record
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -879,6 +1065,204 @@ export default function InstrumentDetails() {
                   className="btn-transition bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-6 rounded-lg"
                 >
                   {woSubmitting ? 'Creating...' : 'Schedule Order'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Review Submission Modal */}
+      {isSubmitReviewOpen && reviewCal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#0c1220] border border-gray-800 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-800/80 flex justify-between items-center bg-[#080d16]">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Fingerprint className="text-indigo-400" size={18} />
+                Submit Calibration for Review
+              </h3>
+              <button onClick={() => setIsSubmitReviewOpen(false)} className="text-gray-400 hover:text-white transition-all">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitReview}>
+              <div className="p-6 space-y-4 text-xs">
+                <div className="p-3 bg-indigo-950/15 border border-indigo-900/20 text-gray-300 rounded-lg leading-relaxed">
+                  Submit this calibration record for compliance review. Signing certifies that the test points recorded represent the true and accurate verification measurements.
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-gray-400 font-semibold">Technician Name (Signature)</label>
+                  <input
+                    type="text"
+                    required
+                    value={submitReviewForm.signerName}
+                    onChange={(e) => setSubmitReviewForm(prev => ({ ...prev, signerName: e.target.value }))}
+                    placeholder="Enter your full name"
+                    className="w-full px-3.5 py-2.5 bg-[#090d16] text-white border border-gray-800 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 transition-all text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-gray-800/80 flex justify-end gap-3 bg-[#080d16]">
+                <button
+                  type="button"
+                  onClick={() => setIsSubmitReviewOpen(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-gray-300 font-semibold rounded-lg border border-white/5 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={reviewSubmitting}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white font-semibold rounded-lg shadow-md shadow-indigo-600/10 transition-all flex items-center gap-1.5"
+                >
+                  {reviewSubmitting ? 'Submitting...' : 'Sign & Submit'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Review Approval Modal */}
+      {isApproveReviewOpen && reviewCal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#0c1220] border border-gray-800 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-800/80 flex justify-between items-center bg-[#080d16]">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Check size={18} className="text-emerald-400" />
+                Sign & Approve Calibration
+              </h3>
+              <button onClick={() => setIsApproveReviewOpen(false)} className="text-gray-400 hover:text-white transition-all">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleApproveReview}>
+              <div className="p-6 space-y-4 text-xs">
+                <div className="p-3 bg-emerald-950/10 border border-emerald-900/20 text-gray-300 rounded-lg leading-relaxed">
+                  Confirm quality review check and approve this calibration record. This action recalculates instrument compliance due dates and closes active work orders.
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-gray-400 font-semibold">Reviewer Name (Signature)</label>
+                  <input
+                    type="text"
+                    required
+                    value={approveReviewForm.signerName}
+                    onChange={(e) => setApproveReviewForm(prev => ({ ...prev, signerName: e.target.value }))}
+                    placeholder="Enter your full name"
+                    className="w-full px-3.5 py-2.5 bg-[#090d16] text-white border border-gray-800 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 transition-all text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-gray-400 font-semibold">Signer Role</label>
+                  <select
+                    value={approveReviewForm.signerRole}
+                    onChange={(e) => setApproveReviewForm(prev => ({ ...prev, signerRole: e.target.value as any }))}
+                    className="w-full px-3.5 py-2.5 bg-[#090d16] text-white border border-gray-800 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 transition-all text-xs"
+                  >
+                    <option value="SUPERVISOR">Supervisor / Approver</option>
+                    <option value="QA">Quality Assurance (QA)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-gray-800/80 flex justify-end gap-3 bg-[#080d16]">
+                <button
+                  type="button"
+                  onClick={() => setIsApproveReviewOpen(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-gray-300 font-semibold rounded-lg border border-white/5 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={reviewSubmitting}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 text-white font-semibold rounded-lg shadow-md shadow-emerald-600/10 transition-all flex items-center gap-1.5"
+                >
+                  {reviewSubmitting ? 'Approving...' : 'Sign & Approve'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Review Rejection Modal */}
+      {isRejectReviewOpen && reviewCal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#0c1220] border border-gray-800 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-800/80 flex justify-between items-center bg-[#080d16]">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <X size={18} className="text-rose-400" />
+                Reject Compliance Record
+              </h3>
+              <button onClick={() => setIsRejectReviewOpen(false)} className="text-gray-400 hover:text-white transition-all">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleRejectReview}>
+              <div className="p-6 space-y-4 text-xs">
+                <div className="p-3 bg-red-950/15 border border-red-900/20 text-gray-300 rounded-lg leading-relaxed">
+                  Reject this calibration record and return it to Draft/Rejected status for correction.
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-gray-400 font-semibold">Reviewer Name (Signature)</label>
+                  <input
+                    type="text"
+                    required
+                    value={rejectReviewForm.signerName}
+                    onChange={(e) => setRejectReviewForm(prev => ({ ...prev, signerName: e.target.value }))}
+                    placeholder="Enter your full name"
+                    className="w-full px-3.5 py-2.5 bg-[#090d16] text-white border border-gray-800 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 transition-all text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-gray-400 font-semibold">Signer Role</label>
+                  <select
+                    value={rejectReviewForm.signerRole}
+                    onChange={(e) => setRejectReviewForm(prev => ({ ...prev, signerRole: e.target.value as any }))}
+                    className="w-full px-3.5 py-2.5 bg-[#090d16] text-white border border-gray-800 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 transition-all text-xs"
+                  >
+                    <option value="SUPERVISOR">Supervisor / Approver</option>
+                    <option value="QA">Quality Assurance (QA)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-gray-400 font-semibold">Reason for Rejection</label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={rejectReviewForm.reason}
+                    onChange={(e) => setRejectReviewForm(prev => ({ ...prev, reason: e.target.value }))}
+                    placeholder="Describe the discrepancy/reasons..."
+                    className="w-full px-3.5 py-2.5 bg-[#090d16] text-white border border-gray-800 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 transition-all text-xs resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-gray-800/80 flex justify-end gap-3 bg-[#080d16]">
+                <button
+                  type="button"
+                  onClick={() => setIsRejectReviewOpen(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-gray-300 font-semibold rounded-lg border border-white/5 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={reviewSubmitting}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:bg-rose-800 text-white font-semibold rounded-lg shadow-md shadow-rose-600/10 transition-all flex items-center gap-1.5"
+                >
+                  {reviewSubmitting ? 'Rejecting...' : 'Reject Calibration'}
                 </button>
               </div>
             </form>

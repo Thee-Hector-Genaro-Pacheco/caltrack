@@ -72,13 +72,19 @@ export interface CalibrationRecord {
   notes?: string | null;
   createdAt: Date | string;
   testPoints?: CalibrationTestPoint[];
+  instrument?: Instrument;
+  status: CalibrationStatus;
+  submittedAt?: Date | string | null;
+  approvedAt?: Date | string | null;
+  rejectedAt?: Date | string | null;
+  signatures?: Signature[];
 }
 
 export interface AuditEvent {
   id: string;
   entityType: string;
   entityId: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE';
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'SUBMIT_CALIBRATION' | 'APPROVE_CALIBRATION' | 'REJECT_CALIBRATION';
   oldValue: any;
   newValue: any;
   changedBy: string;
@@ -157,7 +163,7 @@ export interface CreateCalibrationRecordDto {
 export interface CreateAuditEventDto {
   entityType: string;
   entityId: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE';
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'SUBMIT_CALIBRATION' | 'APPROVE_CALIBRATION' | 'REJECT_CALIBRATION';
   oldValue?: any;
   newValue?: any;
   changedBy: string;
@@ -173,6 +179,9 @@ export interface DashboardStats {
   totalProcessAreas: number;
   totalControlLoops: number;
   openWorkOrders: number;
+  pendingReviews: number;
+  approvedRecords: number;
+  rejectedRecords: number;
 }
 
 export type WorkOrderStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
@@ -210,4 +219,18 @@ export interface UpdateWorkOrderDto {
   completedDate?: Date | string | null;
   description?: string | null;
   reason: string;
+}
+
+export type CalibrationStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+export type SignerRole = 'TECHNICIAN' | 'SUPERVISOR' | 'QA';
+export type SignatureMeaning = 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+
+export interface Signature {
+  id: string;
+  calibrationRecordId: string;
+  signerName: string;
+  signerRole: SignerRole;
+  meaning: SignatureMeaning;
+  signatureHash: string;
+  signedAt: Date | string;
 }

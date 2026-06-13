@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { DashboardStats } from '@caltrack/types';
-import { Activity, AlertTriangle, Database, Layers, RefreshCw, ClipboardList } from 'lucide-react';
+import { Activity, AlertTriangle, Database, Layers, RefreshCw, ClipboardList, Fingerprint, CheckCircle2, XCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDate } from '@caltrack/utils';
 
@@ -136,6 +136,69 @@ export default function Dashboard() {
           </div>
           <div className="mt-4 text-xs text-indigo-300">
             <Link to="/control-loops" className="hover:underline">View control loops →</Link>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+          <Fingerprint className="text-indigo-400" size={20} />
+          Compliance Governance
+        </h2>
+        <p className="text-gray-400 text-xs mt-0.5">Electronic signatures review status queue</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className={`glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 ${
+          stats.pendingReviews > 0 ? 'glow-warning border-amber-500/20 bg-amber-500/[0.02]' : ''
+        }`}>
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Pending Review</p>
+              <h3 className={`text-4xl font-extrabold mt-2 ${stats.pendingReviews > 0 ? 'text-amber-500' : 'text-white'}`}>
+                {stats.pendingReviews}
+              </h3>
+            </div>
+            <div className={`p-3 rounded-lg border ${
+              stats.pendingReviews > 0 
+                ? 'bg-amber-500/10 text-amber-500 border-amber-500/25' 
+                : 'bg-slate-800/40 text-gray-400 border-white/5'
+            }`}>
+              <Fingerprint size={24} />
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-indigo-300">
+            <Link to="/approvals" className="hover:underline">Review approvals queue →</Link>
+          </div>
+        </div>
+
+        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-success">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Approved Records</p>
+              <h3 className="text-4xl font-extrabold text-emerald-500 mt-2">{stats.approvedRecords}</h3>
+            </div>
+            <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-500 border border-emerald-500/25">
+              <CheckCircle2 size={24} />
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-indigo-300">
+            <Link to="/approvals" className="hover:underline">View approved log →</Link>
+          </div>
+        </div>
+
+        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-danger">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Rejected Records</p>
+              <h3 className="text-4xl font-extrabold text-rose-500 mt-2">{stats.rejectedRecords}</h3>
+            </div>
+            <div className="p-3 bg-rose-500/10 rounded-lg text-rose-500 border border-rose-500/25">
+              <XCircle size={24} />
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-indigo-300">
+            <Link to="/approvals" className="hover:underline">View rejected queue →</Link>
           </div>
         </div>
       </div>

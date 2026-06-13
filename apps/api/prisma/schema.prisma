@@ -66,6 +66,25 @@ model ControlLoop {
   instruments   Instrument[]
 }
 
+enum CalibrationStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum SignerRole {
+  TECHNICIAN
+  SUPERVISOR
+  QA
+}
+
+enum SignatureMeaning {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
 model CalibrationRecord {
   id              String                 @id @default(uuid())
   instrumentId    String
@@ -78,6 +97,22 @@ model CalibrationRecord {
   notes           String?
   createdAt       DateTime               @default(now())
   testPoints      CalibrationTestPoint[]
+  status          CalibrationStatus      @default(DRAFT)
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  signatures      Signature[]
+}
+
+model Signature {
+  id                  String            @id @default(uuid())
+  calibrationRecordId String
+  calibrationRecord   CalibrationRecord @relation(fields: [calibrationRecordId], references: [id], onDelete: Cascade)
+  signerName          String
+  signerRole          SignerRole
+  meaning             SignatureMeaning
+  signatureHash       String
+  signedAt            DateTime          @default(now())
 }
 
 model CalibrationTestPoint {

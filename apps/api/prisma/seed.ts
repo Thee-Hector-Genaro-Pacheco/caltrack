@@ -1,6 +1,7 @@
 /// <reference path="../../../node_modules/.prisma/client/index.d.ts" />
 import { PrismaClient, InstrumentStatus } from '@prisma/client';
 import { getOutputSpan, calculateExpectedOutput, calculateErrorPercent, calculateTargetInput } from '@caltrack/utils';
+import { createHash } from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -96,7 +97,18 @@ async function main() {
     });
   }
 
-  // Helper function to seed an instrument and its associated data
+  function generateSignatureHash(
+    calibrationRecordId: string,
+    signerName: string,
+    signerRole: string,
+    timestamp: string,
+    status: string
+  ): string {
+    const input = `${calibrationRecordId}:${signerName}:${signerRole}:${timestamp}:${status}`;
+    return createHash('sha256').update(input).digest('hex');
+  }
+
+  // Seeding logic for instruments
   async function seedInstrument(data: {
     tagNumber: string;
     instrumentType: string;
@@ -110,13 +122,7 @@ async function main() {
     maxPermissibleError: number;
     status: InstrumentStatus;
     calibrationIntervalMonths?: number;
-    calibrations: {
-      calibrationDate: Date;
-      technicianName: string;
-      notes: string;
-      pass: boolean;
-      isLegacy?: boolean;
-    }[];
+    calibrations: any[];
   }) {
     console.log(`Seeding instrument: ${data.tagNumber}`);
 
@@ -181,6 +187,11 @@ async function main() {
 
     // 2. Create Calibrations
     for (const cal of data.calibrations) {
+      const status = cal.status || 'APPROVED';
+      const submittedAt = cal.submittedAt || (status !== 'DRAFT' ? cal.calibrationDate : null);
+      const approvedAt = cal.approvedAt || (status === 'APPROVED' ? cal.calibrationDate : null);
+      const rejectedAt = cal.rejectedAt || (status === 'REJECTED' ? cal.calibrationDate : null);
+
       if (cal.isLegacy) {
         // Legacy calibration (single-point, no testPoints)
         const record = await prisma.calibrationRecord.create({
@@ -192,6 +203,10 @@ async function main() {
             asLeft: instrument.rangeMin + (instrument.rangeMax - instrument.rangeMin) * 0.50,  // calibrated exactly
             passFail: cal.pass,
             notes: cal.notes,
+            status: status as any,
+            submittedAt,
+            approvedAt,
+            rejectedAt,
           }
         });
 
@@ -206,6 +221,59 @@ async function main() {
             reason: 'Legacy Calibration Record Seeding',
           }
         });
+
+        // Seed Signatures
+        const signaturesData = [];
+        if (status === 'PENDING_REVIEW' || status === 'APPROVED' || status === 'REJECTED') {
+          const submittedAtStr = submittedAt.toISOString();
+          const submittedHash = generateSignatureHash(record.id, cal.technicianName, 'TECHNICIAN', submittedAtStr, 'PENDING_REVIEW');
+          signaturesData.push({
+            signerName: cal.technicianName,
+            signerRole: 'TECHNICIAN',
+            meaning: 'SUBMITTED',
+            signatureHash: submittedHash,
+            signedAt: submittedAt,
+          });
+        }
+        if (status === 'APPROVED') {
+          const approvedAtStr = approvedAt.toISOString();
+          const approverRole = cal.approverRole || 'SUPERVISOR';
+          const approverName = cal.approverName || 'Marcus Supervisor';
+          const approvedHash = generateSignatureHash(record.id, approverName, approverRole, approvedAtStr, 'APPROVED');
+          signaturesData.push({
+            signerName: approverName,
+            signerRole: approverRole,
+            meaning: 'APPROVED',
+            signatureHash: approvedHash,
+            signedAt: approvedAt,
+          });
+        }
+        if (status === 'REJECTED') {
+          const rejectedAtStr = rejectedAt.toISOString();
+          const rejecterRole = cal.rejecterRole || 'QA';
+          const rejecterName = cal.rejecterName || 'Elena QA';
+          const rejectedHash = generateSignatureHash(record.id, rejecterName, rejecterRole, rejectedAtStr, 'REJECTED');
+          signaturesData.push({
+            signerName: rejecterName,
+            signerRole: rejecterRole,
+            meaning: 'REJECTED',
+            signatureHash: rejectedHash,
+            signedAt: rejectedAt,
+          });
+        }
+
+        for (const sig of signaturesData) {
+          await prisma.signature.create({
+            data: {
+              calibrationRecordId: record.id,
+              signerName: sig.signerName,
+              signerRole: sig.signerRole as any,
+              meaning: sig.meaning as any,
+              signatureHash: sig.signatureHash,
+              signedAt: sig.signedAt,
+            }
+          });
+        }
       } else {
         // 5-Point Calibration
         const percentages = [0, 0.25, 0.50, 0.75, 1.00];
@@ -267,6 +335,10 @@ async function main() {
             technicianName: cal.technicianName,
             passFail: overallPass,
             notes: cal.notes,
+            status: status as any,
+            submittedAt,
+            approvedAt,
+            rejectedAt,
             testPoints: {
               create: pointsData,
             }
@@ -287,6 +359,59 @@ async function main() {
             reason: 'Multi-Point Calibration Record Seeding',
           }
         });
+
+        // Seed Signatures
+        const signaturesData = [];
+        if (status === 'PENDING_REVIEW' || status === 'APPROVED' || status === 'REJECTED') {
+          const submittedAtStr = submittedAt.toISOString();
+          const submittedHash = generateSignatureHash(record.id, cal.technicianName, 'TECHNICIAN', submittedAtStr, 'PENDING_REVIEW');
+          signaturesData.push({
+            signerName: cal.technicianName,
+            signerRole: 'TECHNICIAN',
+            meaning: 'SUBMITTED',
+            signatureHash: submittedHash,
+            signedAt: submittedAt,
+          });
+        }
+        if (status === 'APPROVED') {
+          const approvedAtStr = approvedAt.toISOString();
+          const approverRole = cal.approverRole || 'SUPERVISOR';
+          const approverName = cal.approverName || 'Marcus Supervisor';
+          const approvedHash = generateSignatureHash(record.id, approverName, approverRole, approvedAtStr, 'APPROVED');
+          signaturesData.push({
+            signerName: approverName,
+            signerRole: approverRole,
+            meaning: 'APPROVED',
+            signatureHash: approvedHash,
+            signedAt: approvedAt,
+          });
+        }
+        if (status === 'REJECTED') {
+          const rejectedAtStr = rejectedAt.toISOString();
+          const rejecterRole = cal.rejecterRole || 'QA';
+          const rejecterName = cal.rejecterName || 'Elena QA';
+          const rejectedHash = generateSignatureHash(record.id, rejecterName, rejecterRole, rejectedAtStr, 'REJECTED');
+          signaturesData.push({
+            signerName: rejecterName,
+            signerRole: rejecterRole,
+            meaning: 'REJECTED',
+            signatureHash: rejectedHash,
+            signedAt: rejectedAt,
+          });
+        }
+
+        for (const sig of signaturesData) {
+          await prisma.signature.create({
+            data: {
+              calibrationRecordId: record.id,
+              signerName: sig.signerName,
+              signerRole: sig.signerRole as any,
+              meaning: sig.meaning as any,
+              signatureHash: sig.signatureHash,
+              signedAt: sig.signedAt,
+            }
+          });
+        }
       }
     }
   }
@@ -378,10 +503,19 @@ async function main() {
     status: 'ACTIVE',
     calibrations: [
       {
+        calibrationDate: new Date(Date.now() - 1 * 24 * 3600000), // 1 day ago
+        technicianName: 'John Doe',
+        notes: 'Annual recalibration. Awaiting supervisor review.',
+        pass: true,
+        status: 'PENDING_REVIEW',
+        submittedAt: new Date(Date.now() - 1 * 24 * 3600000),
+      },
+      {
         calibrationDate: new Date(Date.now() - 60 * 24 * 3600000),
         technicianName: 'John Doe',
         notes: 'Simulated RTD input. Display calibrated with dry block calibrator.',
         pass: true,
+        status: 'APPROVED',
       }
     ]
   });
@@ -400,11 +534,23 @@ async function main() {
     status: 'ACTIVE',
     calibrations: [
       {
+        calibrationDate: new Date(Date.now() - 2 * 24 * 3600000), // 2 days ago
+        technicianName: 'Marcus Vance',
+        notes: 'Failed due to massive drift on the upper span limits.',
+        pass: false,
+        status: 'REJECTED',
+        submittedAt: new Date(Date.now() - 2 * 24 * 3600000),
+        rejectedAt: new Date(Date.now() - 2 * 24 * 3600000),
+        rejecterName: 'Elena QA',
+        rejecterRole: 'QA',
+      },
+      {
         calibrationDate: new Date(Date.now() - 200 * 24 * 3600000),
         technicianName: 'Marcus Vance',
         notes: 'Seeded legacy calibration record to test backward-compatibility rendering.',
         pass: true,
         isLegacy: true,
+        status: 'APPROVED',
       }
     ]
   });
@@ -423,16 +569,25 @@ async function main() {
     status: 'CALIBRATION_DUE',
     calibrations: [
       {
+        calibrationDate: new Date(Date.now() - 3 * 3600000), // 3 hours ago
+        technicianName: 'Marcus Vance',
+        notes: 'In-progress check. Initial testing points recorded in DRAFT.',
+        pass: true,
+        status: 'DRAFT',
+      },
+      {
         calibrationDate: new Date(Date.now() - 360 * 24 * 3600000), // 360 days ago
         technicianName: 'Elena Rostova',
         notes: 'Pre-run verification check. Output within tolerance.',
         pass: true,
+        status: 'APPROVED',
       },
       {
         calibrationDate: new Date(Date.now() - 5 * 24 * 3600000), // 5 days ago (Failed!)
         technicianName: 'Marcus Vance',
         notes: 'Coriolis tube drift observed at 75% and 100% test scale. Needs maintenance.',
         pass: false,
+        status: 'APPROVED',
       }
     ]
   });

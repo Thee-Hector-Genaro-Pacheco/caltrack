@@ -9,6 +9,21 @@ const MOCK_PROCESS_AREAS_KEY = 'caltrack_mock_process_areas';
 const MOCK_CONTROL_LOOPS_KEY = 'caltrack_mock_control_loops';
 const MOCK_WORK_ORDERS_KEY = 'caltrack_mock_work_orders';
 
+function mockSha256(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash;
+  }
+  const seed = Math.abs(hash).toString(16).padEnd(8, 'f');
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += seed;
+  }
+  return result.slice(0, 64);
+}
+
 // Base mock data generator if local storage is empty
 function initializeMockData() {
   if (!localStorage.getItem(MOCK_PROCESS_AREAS_KEY)) {
@@ -175,7 +190,30 @@ function initializeMockData() {
         asLeft: null,
         passFail: true,
         notes: 'Annual recalibration. Minor zero-shift adjusted.',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        status: 'APPROVED',
+        submittedAt: new Date(Date.now() - 30 * 24 * 3600000).toISOString(),
+        approvedAt: new Date(Date.now() - 30 * 24 * 3600000).toISOString(),
+        signatures: [
+          {
+            id: 'sig-1',
+            calibrationRecordId: 'cal-1',
+            signerName: 'Marcus Vance',
+            signerRole: 'TECHNICIAN',
+            meaning: 'SUBMITTED',
+            signatureHash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+            signedAt: new Date(Date.now() - 30 * 24 * 3600000).toISOString(),
+          },
+          {
+            id: 'sig-2',
+            calibrationRecordId: 'cal-1',
+            signerName: 'Marcus Supervisor',
+            signerRole: 'SUPERVISOR',
+            meaning: 'APPROVED',
+            signatureHash: 'f451a44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b856',
+            signedAt: new Date(Date.now() - 30 * 24 * 3600000).toISOString(),
+          }
+        ]
       },
       {
         id: 'cal-2',
@@ -186,7 +224,100 @@ function initializeMockData() {
         asLeft: null,
         passFail: true,
         notes: 'Instrument drift observed, recalibrated within tolerance.',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        status: 'APPROVED',
+        submittedAt: new Date(Date.now() - 366 * 24 * 3600000).toISOString(),
+        approvedAt: new Date(Date.now() - 366 * 24 * 3600000).toISOString(),
+        signatures: [
+          {
+            id: 'sig-3',
+            calibrationRecordId: 'cal-2',
+            signerName: 'Marcus Vance',
+            signerRole: 'TECHNICIAN',
+            meaning: 'SUBMITTED',
+            signatureHash: 'a123b44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b857',
+            signedAt: new Date(Date.now() - 366 * 24 * 3600000).toISOString(),
+          },
+          {
+            id: 'sig-4',
+            calibrationRecordId: 'cal-2',
+            signerName: 'Marcus Supervisor',
+            signerRole: 'SUPERVISOR',
+            meaning: 'APPROVED',
+            signatureHash: 'b456a44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b858',
+            signedAt: new Date(Date.now() - 366 * 24 * 3600000).toISOString(),
+          }
+        ]
+      },
+      {
+        id: 'cal-pending-1',
+        instrumentId: 'inst-2',
+        calibrationDate: new Date(Date.now() - 1 * 24 * 3600000).toISOString(),
+        technicianName: 'Marcus Vance',
+        asFound: null,
+        asLeft: null,
+        passFail: true,
+        notes: 'Awaiting supervisor approval of 5-point data.',
+        createdAt: new Date().toISOString(),
+        status: 'PENDING_REVIEW',
+        submittedAt: new Date(Date.now() - 1 * 24 * 3600000).toISOString(),
+        signatures: [
+          {
+            id: 'sig-5',
+            calibrationRecordId: 'cal-pending-1',
+            signerName: 'Marcus Vance',
+            signerRole: 'TECHNICIAN',
+            meaning: 'SUBMITTED',
+            signatureHash: 'c789a44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b859',
+            signedAt: new Date(Date.now() - 1 * 24 * 3600000).toISOString(),
+          }
+        ]
+      },
+      {
+        id: 'cal-rejected-1',
+        instrumentId: 'inst-3',
+        calibrationDate: new Date(Date.now() - 2 * 24 * 3600000).toISOString(),
+        technicianName: 'Marcus Vance',
+        asFound: null,
+        asLeft: null,
+        passFail: false,
+        notes: 'Upper range drift was out-of-tolerance.',
+        createdAt: new Date().toISOString(),
+        status: 'REJECTED',
+        submittedAt: new Date(Date.now() - 2 * 24 * 3600000).toISOString(),
+        rejectedAt: new Date(Date.now() - 2 * 24 * 3600000).toISOString(),
+        signatures: [
+          {
+            id: 'sig-6',
+            calibrationRecordId: 'cal-rejected-1',
+            signerName: 'Marcus Vance',
+            signerRole: 'TECHNICIAN',
+            meaning: 'SUBMITTED',
+            signatureHash: 'd012a44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b860',
+            signedAt: new Date(Date.now() - 2 * 24 * 3600000).toISOString(),
+          },
+          {
+            id: 'sig-7',
+            calibrationRecordId: 'cal-rejected-1',
+            signerName: 'Elena QA',
+            signerRole: 'QA',
+            meaning: 'REJECTED',
+            signatureHash: 'e345a44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b861',
+            signedAt: new Date(Date.now() - 2 * 24 * 3600000).toISOString(),
+          }
+        ]
+      },
+      {
+        id: 'cal-draft-1',
+        instrumentId: 'inst-4',
+        calibrationDate: new Date(Date.now() - 3 * 3600000).toISOString(),
+        technicianName: 'Marcus Vance',
+        asFound: null,
+        asLeft: null,
+        passFail: true,
+        notes: 'Testing in progress, saved as draft.',
+        createdAt: new Date().toISOString(),
+        status: 'DRAFT',
       }
     ];
 
@@ -330,6 +461,7 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
     const areas = getMockProcessAreas();
     const loops = getMockControlLoops();
     const wos = getMockWorkOrders();
+    const cals = getMockCalibrations();
     return {
       totalInstruments: insts.length,
       calibrationsDue: insts.filter(i => i.status === 'CALIBRATION_DUE').length,
@@ -338,6 +470,9 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
       totalProcessAreas: areas.length,
       totalControlLoops: loops.length,
       openWorkOrders: wos.filter(w => w.status === 'OPEN').length,
+      pendingReviews: cals.filter(c => c.status === 'PENDING_REVIEW').length,
+      approvedRecords: cals.filter(c => c.status === 'APPROVED').length,
+      rejectedRecords: cals.filter(c => c.status === 'REJECTED').length,
     } as any as T;
   }
 
@@ -618,121 +753,315 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
     }
   }
 
-  if (path === '/api/calibrations') {
-    if (method === 'POST') {
-      const body = JSON.parse(options.body as string) as CreateCalibrationRecordDto;
-      const insts = getMockInstruments();
-      const inst = insts.find(i => i.id === body.instrumentId);
-      if (!inst) {
-        throw new Error('Instrument not found');
+  if (path.startsWith('/api/calibrations')) {
+    const parts = path.split('/');
+    if (parts.length === 3 && parts[2] === 'calibrations') {
+      if (method === 'GET') {
+        const cals = getMockCalibrations();
+        const insts = getMockInstruments();
+        const status = url.searchParams.get('status');
+        const instrumentId = url.searchParams.get('instrumentId');
+        
+        let filtered = cals;
+        if (status) {
+          filtered = filtered.filter(c => c.status === status);
+        }
+        if (instrumentId) {
+          filtered = filtered.filter(c => c.instrumentId === instrumentId);
+        }
+        
+        return filtered.map(c => ({
+          ...c,
+          instrument: insts.find(i => i.id === c.instrumentId),
+        })) as any as T;
       }
-
-      const cals = getMockCalibrations();
-      const outputSpan = inst.signalType === '4-20 mA' ? 16 : inst.rangeMax - inst.rangeMin;
-      const maxError = inst.maxPermissibleError || 0.5;
-      let overallPass = true;
-
-      const testPoints = body.testPoints.map((pt, index) => {
-        const span = inst.rangeMax - inst.rangeMin;
-        const percentDecimal = span === 0 ? 0 : (pt.targetInput - inst.rangeMin) / span;
-        
-        const expectedOutput = inst.signalType === '4-20 mA' 
-          ? 4 + 16 * percentDecimal 
-          : pt.targetInput;
-
-        const asFoundError = outputSpan === 0 ? 0 : ((pt.asFoundOutput - expectedOutput) / outputSpan) * 100;
-        const asLeftError = outputSpan === 0 ? 0 : ((pt.asLeftOutput - expectedOutput) / outputSpan) * 100;
-        
-        const pointPass = Math.abs(asLeftError) <= maxError;
-        if (!pointPass) {
-          overallPass = false;
+      
+      if (method === 'POST') {
+        const body = JSON.parse(options.body as string) as CreateCalibrationRecordDto;
+        const insts = getMockInstruments();
+        const inst = insts.find(i => i.id === body.instrumentId);
+        if (!inst) {
+          throw new Error('Instrument not found');
         }
 
-        return {
-          id: `pt-${Date.now()}-${index}`,
-          calibrationRecordId: `cal-${Date.now()}`,
-          targetInput: pt.targetInput,
-          expectedOutput,
-          asFoundOutput: pt.asFoundOutput,
-          asLeftOutput: pt.asLeftOutput,
-          asFoundError,
-          asLeftError,
-          passFail: pointPass,
-        };
-      });
+        const cals = getMockCalibrations();
+        const outputSpan = inst.signalType === '4-20 mA' ? 16 : inst.rangeMax - inst.rangeMin;
+        const maxError = inst.maxPermissibleError || 0.5;
+        let overallPass = true;
 
-      const newCalibration: CalibrationRecord = {
-        id: `cal-${Date.now()}`,
-        instrumentId: body.instrumentId,
-        calibrationDate: new Date(body.calibrationDate).toISOString(),
-        technicianName: body.technicianName,
-        passFail: overallPass,
-        notes: body.notes || '',
-        createdAt: new Date().toISOString(),
-        testPoints,
-      };
+        const calId = `cal-${Date.now()}`;
+        const testPoints = body.testPoints.map((pt, index) => {
+          const span = inst.rangeMax - inst.rangeMin;
+          const percentDecimal = span === 0 ? 0 : (pt.targetInput - inst.rangeMin) / span;
+          
+          const expectedOutput = inst.signalType === '4-20 mA' 
+            ? 4 + 16 * percentDecimal 
+            : pt.targetInput;
 
-      cals.push(newCalibration);
-      saveMockCalibrations(cals);
-
-      const instIdx = insts.findIndex(i => i.id === body.instrumentId);
-      if (instIdx !== -1) {
-        const targetInst = insts[instIdx];
-        const calDateStr = new Date(body.calibrationDate).toISOString();
-        const nextDueDate = new Date(calDateStr);
-        nextDueDate.setMonth(nextDueDate.getMonth() + (targetInst.calibrationIntervalMonths || 12));
-
-        insts[instIdx].status = overallPass ? 'ACTIVE' : 'CALIBRATION_DUE';
-        insts[instIdx].lastCalibrationDate = calDateStr;
-        insts[instIdx].nextCalibrationDueDate = nextDueDate.toISOString();
-        saveMockInstruments(insts);
-
-        // Auto-complete active work orders
-        const wos = getMockWorkOrders();
-        let woChanged = false;
-        wos.forEach((wo) => {
-          if (wo.instrumentId === body.instrumentId && (wo.status === 'OPEN' || wo.status === 'IN_PROGRESS')) {
-            const oldStatus = wo.status;
-            wo.status = 'COMPLETED';
-            wo.completedDate = new Date().toISOString();
-            wo.updatedAt = new Date().toISOString();
-            woChanged = true;
-
-            const auditsList = getMockAudits();
-            auditsList.unshift({
-              id: `aud-${Date.now()}-${wo.id}`,
-              entityType: 'WorkOrder',
-              entityId: wo.id,
-              action: 'UPDATE',
-              oldValue: { status: oldStatus },
-              newValue: { status: 'COMPLETED', completedDate: wo.completedDate },
-              changedBy: userEmail,
-              timestamp: new Date().toISOString(),
-              reason: 'Automatically completed upon calibration completion',
-            });
-            saveMockAudits(auditsList);
+          const asFoundError = outputSpan === 0 ? 0 : ((pt.asFoundOutput - expectedOutput) / outputSpan) * 100;
+          const asLeftError = outputSpan === 0 ? 0 : ((pt.asLeftOutput - expectedOutput) / outputSpan) * 100;
+          
+          const pointPass = Math.abs(asLeftError) <= maxError;
+          if (!pointPass) {
+            overallPass = false;
           }
+
+          return {
+            id: `pt-${Date.now()}-${index}`,
+            calibrationRecordId: calId,
+            targetInput: pt.targetInput,
+            expectedOutput,
+            asFoundOutput: pt.asFoundOutput,
+            asLeftOutput: pt.asLeftOutput,
+            asFoundError,
+            asLeftError,
+            passFail: pointPass,
+          };
         });
-        if (woChanged) {
-          saveMockWorkOrders(wos);
+
+        const newCalibration: CalibrationRecord = {
+          id: calId,
+          instrumentId: body.instrumentId,
+          calibrationDate: new Date(body.calibrationDate).toISOString(),
+          technicianName: body.technicianName,
+          passFail: overallPass,
+          notes: body.notes || '',
+          createdAt: new Date().toISOString(),
+          status: 'DRAFT',
+          testPoints,
+          signatures: [],
+        };
+
+        cals.unshift(newCalibration);
+        saveMockCalibrations(cals);
+
+        const audits = getMockAudits();
+        audits.unshift({
+          id: `aud-${Date.now()}`,
+          entityType: 'CalibrationRecord',
+          entityId: newCalibration.id,
+          action: 'CREATE',
+          oldValue: null,
+          newValue: newCalibration,
+          changedBy: userEmail,
+          timestamp: new Date().toISOString(),
+          reason: 'Calibration Record Created (DRAFT)',
+        });
+        saveMockAudits(audits);
+
+        return newCalibration as any as T;
+      }
+    } else if (parts.length >= 4) {
+      const id = parts[3];
+      const cals = getMockCalibrations();
+      const insts = getMockInstruments();
+      const calIdx = cals.findIndex(c => c.id === id);
+      
+      if (calIdx === -1) {
+        throw new Error('Calibration record not found');
+      }
+      
+      const record = cals[calIdx];
+
+      if (parts.length === 4) {
+        if (method === 'GET') {
+          return {
+            ...record,
+            instrument: insts.find(i => i.id === record.instrumentId),
+          } as any as T;
+        }
+        
+        if (method === 'PUT') {
+          if (record.status === 'APPROVED') {
+            throw new Error('Compliance record is approved and locked. Modifications are prohibited.');
+          }
+          const body = JSON.parse(options.body as string);
+          const updatedRecord = {
+            ...record,
+            ...body,
+            updatedAt: new Date().toISOString(),
+          };
+          cals[calIdx] = updatedRecord;
+          saveMockCalibrations(cals);
+          return updatedRecord as any as T;
+        }
+
+        if (method === 'DELETE') {
+          if (record.status === 'APPROVED') {
+            throw new Error('Compliance record is approved and locked. Modifications are prohibited.');
+          }
+          cals.splice(calIdx, 1);
+          saveMockCalibrations(cals);
+          return { message: 'Calibration record deleted successfully' } as any as T;
         }
       }
 
-      const audits = getMockAudits();
-      audits.unshift({
-        id: `aud-${Date.now()}`,
-        entityType: 'CalibrationRecord',
-        entityId: newCalibration.id,
-        action: 'CREATE',
-        oldValue: null,
-        newValue: newCalibration,
-        changedBy: userEmail,
-        timestamp: new Date().toISOString(),
-        reason: 'Calibration Record Created',
-      });
-      saveMockAudits(audits);
+      if (parts.length === 5) {
+        const subRoute = parts[4];
+        const signedAt = new Date().toISOString();
 
-      return newCalibration as any as T;
+        if (subRoute === 'submit') {
+          const { signerName, signerRole } = JSON.parse(options.body as string);
+          const signatureHash = mockSha256(`${id}:${signerName}:${signerRole}:${signedAt}:PENDING_REVIEW`);
+          
+          record.status = 'PENDING_REVIEW';
+          record.submittedAt = signedAt;
+          record.signatures = record.signatures || [];
+          record.signatures.push({
+            id: `sig-${Date.now()}`,
+            calibrationRecordId: id,
+            signerName,
+            signerRole,
+            meaning: 'SUBMITTED',
+            signatureHash,
+            signedAt,
+          });
+          
+          cals[calIdx] = record;
+          saveMockCalibrations(cals);
+
+          const audits = getMockAudits();
+          audits.unshift({
+            id: `aud-${Date.now()}`,
+            entityType: 'CalibrationRecord',
+            entityId: id,
+            action: 'SUBMIT_CALIBRATION',
+            oldValue: { status: 'DRAFT' },
+            newValue: { status: 'PENDING_REVIEW', submittedAt: signedAt },
+            changedBy: userEmail,
+            timestamp: new Date().toISOString(),
+            reason: `Calibration record submitted for compliance review by ${signerName} (${signerRole})`,
+          });
+          saveMockAudits(audits);
+
+          return record as any as T;
+        }
+
+        if (subRoute === 'approve') {
+          if (record.status === 'APPROVED') {
+            throw new Error('Calibration record is already approved');
+          }
+          const { signerName, signerRole } = JSON.parse(options.body as string);
+          const signatureHash = mockSha256(`${id}:${signerName}:${signerRole}:${signedAt}:APPROVED`);
+          
+          const oldStatus = record.status;
+          record.status = 'APPROVED';
+          record.approvedAt = signedAt;
+          record.signatures = record.signatures || [];
+          record.signatures.push({
+            id: `sig-${Date.now()}`,
+            calibrationRecordId: id,
+            signerName,
+            signerRole,
+            meaning: 'APPROVED',
+            signatureHash,
+            signedAt,
+          });
+          
+          cals[calIdx] = record;
+          saveMockCalibrations(cals);
+
+          const instIdx = insts.findIndex(i => i.id === record.instrumentId);
+          if (instIdx !== -1) {
+            const instrument = insts[instIdx];
+            const nextStatus = record.passFail ? 'ACTIVE' : 'CALIBRATION_DUE';
+            const calibrationDate = new Date(record.calibrationDate);
+            const nextCalibrationDueDate = new Date(calibrationDate);
+            nextCalibrationDueDate.setMonth(nextCalibrationDueDate.getMonth() + (instrument.calibrationIntervalMonths || 12));
+
+            insts[instIdx].status = nextStatus;
+            insts[instIdx].lastCalibrationDate = calibrationDate.toISOString();
+            insts[instIdx].nextCalibrationDueDate = nextCalibrationDueDate.toISOString();
+            saveMockInstruments(insts);
+
+            const wos = getMockWorkOrders();
+            let woChanged = false;
+            wos.forEach((wo) => {
+              if (wo.instrumentId === record.instrumentId && (wo.status === 'OPEN' || wo.status === 'IN_PROGRESS')) {
+                const oldWoStatus = wo.status;
+                wo.status = 'COMPLETED';
+                wo.completedDate = new Date().toISOString();
+                wo.updatedAt = new Date().toISOString();
+                woChanged = true;
+
+                const auditsList = getMockAudits();
+                auditsList.unshift({
+                  id: `aud-${Date.now()}-${wo.id}`,
+                  entityType: 'WorkOrder',
+                  entityId: wo.id,
+                  action: 'UPDATE',
+                  oldValue: { status: oldWoStatus },
+                  newValue: { status: 'COMPLETED', completedDate: wo.completedDate },
+                  changedBy: userEmail,
+                  timestamp: new Date().toISOString(),
+                  reason: 'Automatically completed upon calibration compliance approval',
+                });
+                saveMockAudits(auditsList);
+              }
+            });
+            if (woChanged) {
+              saveMockWorkOrders(wos);
+            }
+          }
+
+          const audits = getMockAudits();
+          audits.unshift({
+            id: `aud-${Date.now()}`,
+            entityType: 'CalibrationRecord',
+            entityId: id,
+            action: 'APPROVE_CALIBRATION',
+            oldValue: { status: oldStatus },
+            newValue: { status: 'APPROVED', approvedAt: signedAt },
+            changedBy: userEmail,
+            timestamp: new Date().toISOString(),
+            reason: `Calibration record approved by ${signerName} (${signerRole})`,
+          });
+          saveMockAudits(audits);
+
+          return record as any as T;
+        }
+
+        if (subRoute === 'reject') {
+          if (record.status === 'APPROVED') {
+            throw new Error('Approved compliance records cannot be rejected');
+          }
+          const { signerName, signerRole, reason } = JSON.parse(options.body as string);
+          const signatureHash = mockSha256(`${id}:${signerName}:${signerRole}:${signedAt}:REJECTED`);
+          
+          const oldStatus = record.status;
+          record.status = 'REJECTED';
+          record.rejectedAt = signedAt;
+          record.signatures = record.signatures || [];
+          record.signatures.push({
+            id: `sig-${Date.now()}`,
+            calibrationRecordId: id,
+            signerName,
+            signerRole,
+            meaning: 'REJECTED',
+            signatureHash,
+            signedAt,
+          });
+          
+          cals[calIdx] = record;
+          saveMockCalibrations(cals);
+
+          const audits = getMockAudits();
+          audits.unshift({
+            id: `aud-${Date.now()}`,
+            entityType: 'CalibrationRecord',
+            entityId: id,
+            action: 'REJECT_CALIBRATION',
+            oldValue: { status: oldStatus },
+            newValue: { status: 'REJECTED', rejectedAt: signedAt },
+            changedBy: userEmail,
+            timestamp: new Date().toISOString(),
+            reason: `Calibration record rejected by ${signerName} (${signerRole}). Reason: ${reason}`,
+          });
+          saveMockAudits(audits);
+
+          return record as any as T;
+        }
+      }
     }
   }
 
@@ -941,6 +1270,20 @@ export const api = {
   addCalibrationRecord: (dto: CreateCalibrationRecordDto) => request<CalibrationRecord>('/api/calibrations', {
     method: 'POST',
     body: JSON.stringify(dto),
+  }),
+  getCalibrations: (status?: string, instrumentId?: string) => request<CalibrationRecord[]>(`/api/calibrations?status=${status || ''}&instrumentId=${instrumentId || ''}`),
+  getCalibration: (id: string) => request<CalibrationRecord>(`/api/calibrations/${id}`),
+  submitCalibration: (id: string, signerName: string, signerRole: string) => request<CalibrationRecord>(`/api/calibrations/${id}/submit`, {
+    method: 'POST',
+    body: JSON.stringify({ signerName, signerRole }),
+  }),
+  approveCalibration: (id: string, signerName: string, signerRole: string) => request<CalibrationRecord>(`/api/calibrations/${id}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({ signerName, signerRole }),
+  }),
+  rejectCalibration: (id: string, signerName: string, signerRole: string, reason: string) => request<CalibrationRecord>(`/api/calibrations/${id}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ signerName, signerRole, reason }),
   }),
   getAuditTrail: () => request<AuditEvent[]>('/api/audit'),
   getProcessAreas: () => request<ProcessArea[]>('/api/process-areas'),

@@ -22,6 +22,15 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     const openWorkOrders = await prisma.workOrder.count({
       where: { status: 'OPEN' },
     });
+    const pendingReviews = await prisma.calibrationRecord.count({
+      where: { status: 'PENDING_REVIEW' },
+    });
+    const approvedRecords = await prisma.calibrationRecord.count({
+      where: { status: 'APPROVED' },
+    });
+    const rejectedRecords = await prisma.calibrationRecord.count({
+      where: { status: 'REJECTED' },
+    });
 
     res.json({
       totalInstruments,
@@ -31,6 +40,9 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       totalProcessAreas,
       totalControlLoops,
       openWorkOrders,
+      pendingReviews,
+      approvedRecords,
+      rejectedRecords,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

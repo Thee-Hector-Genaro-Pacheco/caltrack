@@ -215,6 +215,7 @@ export async function addCalibrationRecord(dto: CreateCalibrationRecordDto, chan
       technicianName: dto.technicianName,
       passFail: overallPass,
       notes: dto.notes,
+      status: 'DRAFT',
       testPoints: {
         create: pointsData,
       },
@@ -224,48 +225,6 @@ export async function addCalibrationRecord(dto: CreateCalibrationRecordDto, chan
     },
   });
 
-  const nextStatus = overallPass ? 'ACTIVE' : 'CALIBRATION_DUE';
-  const calibrationDate = new Date(dto.calibrationDate);
-  const nextCalibrationDueDate = new Date(calibrationDate);
-  nextCalibrationDueDate.setMonth(nextCalibrationDueDate.getMonth() + (instrument.calibrationIntervalMonths || 12));
-
-  await prisma.instrument.update({
-    where: { id: dto.instrumentId },
-    data: { 
-      status: nextStatus,
-      lastCalibrationDate: calibrationDate,
-      nextCalibrationDueDate,
-    },
-  });
-
-  // Auto-complete open or in-progress work orders for this instrument
-  const activeWorkOrders = await prisma.workOrder.findMany({
-    where: {
-      instrumentId: dto.instrumentId,
-      status: { in: ['OPEN', 'IN_PROGRESS'] },
-    },
-  });
-
-  for (const wo of activeWorkOrders) {
-    const updatedWo = await prisma.workOrder.update({
-      where: { id: wo.id },
-      data: {
-        status: 'COMPLETED',
-        completedDate: new Date(),
-      },
-    });
-
-    await createAuditEvent({
-      entityType: 'WorkOrder',
-      entityId: wo.id,
-      action: 'UPDATE',
-      oldValue: { status: wo.status, completedDate: wo.completedDate },
-      newValue: { status: 'COMPLETED', completedDate: updatedWo.completedDate },
-      changedBy,
-      reason: 'Automatically completed upon calibration completion',
-    });
-  }
-
   await createAuditEvent({
     entityType: 'CalibrationRecord',
     entityId: record.id,
@@ -273,8 +232,208 @@ export async function addCalibrationRecord(dto: CreateCalibrationRecordDto, chan
     oldValue: null,
     newValue: record,
     changedBy,
-    reason: 'Calibration Record Created',
+    reason: 'Calibration Record Created (DRAFT)',
   });
 
   return record;
+}
+
+import { generateSignatureHash } from '../utils/hash';
+
+export async function submitCalibrationForReview(id: string, signerName: string, signerRole: string, changedBy: string) {
+  const record = await prisma.calibrationRecord.findUnique({
+    where: { id },
+    include: { testPoints: true }
+  });
+
+  if (!record) {
+    throw new Error('Calibration record not found');
+  }
+
+  const signedAt = new Date();
+  const signatureHash = generateSignatureHash(id, signerName, signerRole, signedAt, 'PENDING_REVIEW');
+
+  const updatedRecord = await prisma.calibrationRecord.update({
+    where: { id },
+    data: {
+      status: 'PENDING_REVIEW',
+      submittedAt: signedAt,
+      signatures: {
+        create: {
+          signerName,
+          signerRole: signerRole as any,
+          meaning: 'SUBMITTED',
+          signatureHash,
+          signedAt,
+        }
+      }
+    },
+    include: {
+      testPoints: true,
+      signatures: true,
+    }
+  });
+
+  await createAuditEvent({
+    entityType: 'CalibrationRecord',
+    entityId: id,
+    action: 'SUBMIT_CALIBRATION',
+    oldValue: { status: record.status },
+    newValue: { status: 'PENDING_REVIEW', submittedAt: signedAt },
+    changedBy,
+    reason: `Calibration record submitted for compliance review by ${signerName} (${signerRole})`,
+  });
+
+  return updatedRecord;
+}
+
+export async function approveCalibration(id: string, signerName: string, signerRole: string, changedBy: string) {
+  const record = await prisma.calibrationRecord.findUnique({
+    where: { id },
+    include: { testPoints: true }
+  });
+
+  if (!record) {
+    throw new Error('Calibration record not found');
+  }
+
+  if (record.status === 'APPROVED') {
+    throw new Error('Calibration record is already approved');
+  }
+
+  const signedAt = new Date();
+  const signatureHash = generateSignatureHash(id, signerName, signerRole, signedAt, 'APPROVED');
+
+  const updatedRecord = await prisma.calibrationRecord.update({
+    where: { id },
+    data: {
+      status: 'APPROVED',
+      approvedAt: signedAt,
+      signatures: {
+        create: {
+          signerName,
+          signerRole: signerRole as any,
+          meaning: 'APPROVED',
+          signatureHash,
+          signedAt,
+        }
+      }
+    },
+    include: {
+      testPoints: true,
+      signatures: true,
+    }
+  });
+
+  // Compliance Action: Update the instrument parameters only when officially APPROVED
+  const instrument = await prisma.instrument.findUnique({
+    where: { id: record.instrumentId }
+  });
+
+  if (instrument) {
+    const nextStatus = record.passFail ? 'ACTIVE' : 'CALIBRATION_DUE';
+    const calibrationDate = new Date(record.calibrationDate);
+    const nextCalibrationDueDate = new Date(calibrationDate);
+    nextCalibrationDueDate.setMonth(nextCalibrationDueDate.getMonth() + (instrument.calibrationIntervalMonths || 12));
+
+    await prisma.instrument.update({
+      where: { id: record.instrumentId },
+      data: {
+        status: nextStatus,
+        lastCalibrationDate: calibrationDate,
+        nextCalibrationDueDate,
+      },
+    });
+
+    // Auto-complete open or in-progress work orders for this instrument
+    const activeWorkOrders = await prisma.workOrder.findMany({
+      where: {
+        instrumentId: record.instrumentId,
+        status: { in: ['OPEN', 'IN_PROGRESS'] },
+      },
+    });
+
+    for (const wo of activeWorkOrders) {
+      const updatedWo = await prisma.workOrder.update({
+        where: { id: wo.id },
+        data: {
+          status: 'COMPLETED',
+          completedDate: new Date(),
+        },
+      });
+
+      await createAuditEvent({
+        entityType: 'WorkOrder',
+        entityId: wo.id,
+        action: 'UPDATE',
+        oldValue: { status: wo.status, completedDate: wo.completedDate },
+        newValue: { status: 'COMPLETED', completedDate: updatedWo.completedDate },
+        changedBy,
+        reason: 'Automatically completed upon calibration compliance approval',
+      });
+    }
+  }
+
+  await createAuditEvent({
+    entityType: 'CalibrationRecord',
+    entityId: id,
+    action: 'APPROVE_CALIBRATION',
+    oldValue: { status: record.status },
+    newValue: { status: 'APPROVED', approvedAt: signedAt },
+    changedBy,
+    reason: `Calibration record approved by ${signerName} (${signerRole})`,
+  });
+
+  return updatedRecord;
+}
+
+export async function rejectCalibration(id: string, signerName: string, signerRole: string, reason: string, changedBy: string) {
+  const record = await prisma.calibrationRecord.findUnique({
+    where: { id },
+    include: { testPoints: true }
+  });
+
+  if (!record) {
+    throw new Error('Calibration record not found');
+  }
+
+  if (record.status === 'APPROVED') {
+    throw new Error('Approved compliance records cannot be rejected');
+  }
+
+  const signedAt = new Date();
+  const signatureHash = generateSignatureHash(id, signerName, signerRole, signedAt, 'REJECTED');
+
+  const updatedRecord = await prisma.calibrationRecord.update({
+    where: { id },
+    data: {
+      status: 'REJECTED',
+      rejectedAt: signedAt,
+      signatures: {
+        create: {
+          signerName,
+          signerRole: signerRole as any,
+          meaning: 'REJECTED',
+          signatureHash,
+          signedAt,
+        }
+      }
+    },
+    include: {
+      testPoints: true,
+      signatures: true,
+    }
+  });
+
+  await createAuditEvent({
+    entityType: 'CalibrationRecord',
+    entityId: id,
+    action: 'REJECT_CALIBRATION',
+    oldValue: { status: record.status },
+    newValue: { status: 'REJECTED', rejectedAt: signedAt },
+    changedBy,
+    reason: `Calibration record rejected by ${signerName} (${signerRole}). Reason: ${reason}`,
+  });
+
+  return updatedRecord;
 }
