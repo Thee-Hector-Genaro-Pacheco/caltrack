@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../lib/api';
-import { Instrument, CalibrationRecord, WorkOrderPriority } from '@caltrack/types';
-import { ArrowLeft, Calendar, User, FileText, Plus, ShieldAlert, Trash2, Edit3, X, ChevronDown, ChevronRight, ClipboardList, Fingerprint, Check } from 'lucide-react';
+import { Instrument, CalibrationRecord, WorkOrderPriority, ReferenceStandard } from '@caltrack/types';
+import { ArrowLeft, Calendar, User, FileText, Plus, ShieldAlert, Trash2, Edit3, X, ChevronDown, ChevronRight, ClipboardList, Fingerprint, Check, Award } from 'lucide-react';
 import { formatDate } from '@caltrack/utils';
 
 export default function InstrumentDetails() {
@@ -44,6 +44,8 @@ export default function InstrumentDetails() {
   const [rejectReviewForm, setRejectReviewForm] = useState({ signerName: '', signerRole: 'QA' as any, reason: '' });
   
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [availableStandards, setAvailableStandards] = useState<ReferenceStandard[]>([]);
+  const [selectedStandards, setSelectedStandards] = useState<{ referenceStandardId: string; usageNotes: string }[]>([]);
 
   useEffect(() => {
     if (isCalModalOpen && instrument) {
@@ -63,6 +65,7 @@ export default function InstrumentDetails() {
         };
       });
       setTestPoints(initialPoints);
+      setSelectedStandards([]);
     }
   }, [isCalModalOpen, instrument]);
 
@@ -105,6 +108,9 @@ export default function InstrumentDetails() {
     if (query.get('logCal') === 'true') {
       setIsCalModalOpen(true);
     }
+    api.getReferenceStandards()
+      .then(res => setAvailableStandards(res))
+      .catch(err => console.error('Error fetching reference standards:', err));
   }, [id]);
 
   const fetchDetails = () => {
@@ -135,6 +141,7 @@ export default function InstrumentDetails() {
           asFoundOutput: parseFloat(pt.asFoundOutput) || 0,
           asLeftOutput: parseFloat(pt.asLeftOutput) || 0,
         })),
+        referenceStandards: selectedStandards,
       });
       setIsCalModalOpen(false);
       setTechnician('');
@@ -603,6 +610,55 @@ export default function InstrumentDetails() {
                                 </div>
                               )}
 
+                              {/* Traceable Reference Standards Section */}
+                              <div className="space-y-2 mt-4">
+                                <h5 className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5 font-sans">
+                                  <Award size={12} className="text-indigo-400" />
+                                  Traceable Reference Standards (Metrology)
+                                </h5>
+                                {cal.referenceStandards && cal.referenceStandards.length > 0 ? (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    {cal.referenceStandards.map((ref) => {
+                                      const std = ref.referenceStandard;
+                                      if (!std) return null;
+                                      return (
+                                        <div key={ref.id} className="p-2.5 bg-[#090d16] border border-gray-800 rounded-lg flex items-center justify-between text-xs">
+                                          <div>
+                                            <div className="font-semibold text-gray-300 flex items-center gap-1.5">
+                                              <span className="font-mono text-[9px] text-indigo-400 bg-indigo-500/5 px-1.5 py-0.5 rounded border border-indigo-500/10">
+                                                {std.assetTag}
+                                              </span>
+                                              {std.manufacturer} {std.model}
+                                            </div>
+                                            <div className="text-[10px] text-gray-500 mt-1">
+                                              S/N: <span className="text-gray-400 font-mono">{std.serialNumber}</span> &bull; 
+                                              Cert: <span className="text-indigo-400/80 font-mono">{std.certificateNumber}</span>
+                                            </div>
+                                            {ref.usageNotes && (
+                                              <div className="text-[10px] text-gray-400 mt-1 italic">
+                                                Notes: {ref.usageNotes}
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="text-right">
+                                            <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                              std.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                              std.status === 'DUE_SOON' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                                              std.status === 'EXPIRED' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                                              'bg-gray-500/10 text-gray-400 border border-gray-500/20'
+                                            }`}>
+                                              {std.status.replace('_', ' ')}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-gray-500 italic">No reference standards linked to this calibration record.</div>
+                                )}
+                              </div>
+
                               {/* Electronic Signatures Section */}
                               <div className="space-y-2 mt-4">
                                 <h5 className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
@@ -903,6 +959,89 @@ export default function InstrumentDetails() {
                 </div>
               </div>
  
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                  Traceable Reference Standards used
+                </label>
+                {availableStandards.length === 0 ? (
+                  <div className="text-xs text-gray-500 italic p-3 bg-slate-900/40 border border-gray-800 rounded-lg">
+                    No reference standards registered. Please register reference standards before logging calibration.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-800 rounded-lg p-3 bg-slate-950/20">
+                    {availableStandards.map((std) => {
+                      const isSelected = selectedStandards.some(s => s.referenceStandardId === std.id);
+                      const isExpired = std.status === 'EXPIRED' || new Date(std.calibrationDueDate) < new Date() && std.status !== 'OUT_OF_SERVICE';
+                      const isOutOfService = std.status === 'OUT_OF_SERVICE';
+                      const isInvalid = isExpired || isOutOfService;
+
+                      const handleCheckboxChange = (checked: boolean) => {
+                        if (checked) {
+                          setSelectedStandards(prev => [...prev, { referenceStandardId: std.id, usageNotes: '' }]);
+                        } else {
+                          setSelectedStandards(prev => prev.filter(s => s.referenceStandardId !== std.id));
+                        }
+                      };
+
+                      const handleNotesChange = (val: string) => {
+                        setSelectedStandards(prev => prev.map(s => s.referenceStandardId === std.id ? { ...s, usageNotes: val } : s));
+                      };
+
+                      return (
+                        <div key={std.id} className="p-2.5 rounded-lg bg-[#0c1220]/60 border border-gray-800/80 flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <label className="flex items-center gap-2.5 cursor-pointer select-none text-xs text-gray-200">
+                              <input
+                                type="checkbox"
+                                className="rounded border-gray-700 bg-slate-900 text-indigo-600 focus:ring-0 focus:ring-offset-0 h-4 w-4"
+                                checked={isSelected}
+                                onChange={(e) => handleCheckboxChange(e.target.checked)}
+                              />
+                              <span className="font-semibold text-gray-300 flex items-center gap-1.5">
+                                <span className="font-mono text-[10px] text-indigo-400 bg-indigo-500/5 px-2 py-0.5 rounded border border-indigo-500/10 font-bold">
+                                  {std.assetTag}
+                                </span>
+                                {std.manufacturer} {std.model}
+                              </span>
+                            </label>
+
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-mono text-gray-500">S/N: {std.serialNumber}</span>
+                              <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                isExpired ? 'bg-red-500/10 text-red-400 border border-red-500/25' :
+                                isOutOfService ? 'bg-gray-500/10 text-gray-400 border border-gray-500/25' :
+                                std.status === 'DUE_SOON' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/25' :
+                                'bg-emerald-500/10 text-emerald-400 border border-emerald-500/25'
+                              }`}>
+                                {isExpired ? 'EXPIRED' : std.status.replace('_', ' ')}
+                              </span>
+                            </div>
+                          </div>
+
+                          {isSelected && (
+                            <div className="pl-6.5 mt-1">
+                              <input
+                                type="text"
+                                className="w-full bg-slate-900 border border-gray-800 rounded py-1 px-2 text-xs text-gray-300 focus:outline-none focus:border-indigo-500"
+                                placeholder="Add optional usage notes for this instrument (e.g. Channel calibration used)..."
+                                value={selectedStandards.find(s => s.referenceStandardId === std.id)?.usageNotes || ''}
+                                onChange={(e) => handleNotesChange(e.target.value)}
+                              />
+                              {isInvalid && (
+                                <p className="text-[10px] text-red-400 mt-1 font-medium flex items-center gap-1">
+                                  <ShieldAlert size={11} />
+                                  Warning: Using an expired/out-of-service standard will block this record's review submission.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
                   Technician Notes / Remarks

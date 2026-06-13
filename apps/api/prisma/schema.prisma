@@ -102,6 +102,7 @@ model CalibrationRecord {
   approvedAt      DateTime?
   rejectedAt      DateTime?
   signatures      Signature[]
+  referenceStandards CalibrationReferenceStandard[]
 }
 
 model Signature {
@@ -167,4 +168,37 @@ model WorkOrder {
   description        String?
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
+}
+
+enum ReferenceStandardStatus {
+  ACTIVE
+  DUE_SOON
+  EXPIRED
+  OUT_OF_SERVICE
+}
+
+model ReferenceStandard {
+  id                 String                         @id @default(uuid())
+  assetTag           String                         @unique
+  equipmentType      String
+  manufacturer       String
+  model              String
+  serialNumber       String
+  accuracyClass      String
+  certificateNumber  String
+  lastCalibratedDate DateTime
+  calibrationDueDate DateTime
+  status             ReferenceStandardStatus        @default(ACTIVE)
+  createdAt          DateTime                       @default(now())
+  updatedAt          DateTime                       @updatedAt
+  calibrations       CalibrationReferenceStandard[]
+}
+
+model CalibrationReferenceStandard {
+  id                  String            @id @default(uuid())
+  calibrationRecordId String
+  calibrationRecord   CalibrationRecord @relation(fields: [calibrationRecordId], references: [id], onDelete: Cascade)
+  referenceStandardId String
+  referenceStandard   ReferenceStandard @relation(fields: [referenceStandardId], references: [id], onDelete: Restrict)
+  usageNotes          String?
 }

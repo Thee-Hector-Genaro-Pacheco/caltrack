@@ -2,6 +2,7 @@ import prisma from '../db/prisma';
 import { CreateInstrumentDto, UpdateInstrumentDto, CreateCalibrationRecordDto } from '@caltrack/types';
 import { getObjectDiff } from '@caltrack/utils';
 import { createAuditEvent } from './audit.service';
+import { checkReferenceStandardsValidity } from './referenceStandard.service';
 
 export async function getAllInstruments() {
   return await prisma.instrument.findMany({
@@ -219,9 +220,20 @@ export async function addCalibrationRecord(dto: CreateCalibrationRecordDto, chan
       testPoints: {
         create: pointsData,
       },
+      referenceStandards: dto.referenceStandards ? {
+        create: dto.referenceStandards.map(rs => ({
+          referenceStandardId: rs.referenceStandardId,
+          usageNotes: rs.usageNotes || null,
+        }))
+      } : undefined,
     },
     include: {
       testPoints: true,
+      referenceStandards: {
+        include: {
+          referenceStandard: true
+        }
+      }
     },
   });
 
@@ -230,10 +242,28 @@ export async function addCalibrationRecord(dto: CreateCalibrationRecordDto, chan
     entityId: record.id,
     action: 'CREATE',
     oldValue: null,
-    newValue: record,
+    newValue: record as any,
     changedBy,
     reason: 'Calibration Record Created (DRAFT)',
   });
+
+  if (dto.referenceStandards && dto.referenceStandards.length > 0) {
+    const standards = await prisma.referenceStandard.findMany({
+      where: { id: { in: dto.referenceStandards.map(r => r.referenceStandardId) } }
+    });
+    for (const rs of dto.referenceStandards) {
+      const stdObj = standards.find(s => s.id === rs.referenceStandardId);
+      await createAuditEvent({
+        entityType: 'CalibrationRecord',
+        entityId: record.id,
+        action: 'LINK_REFERENCE_STANDARD' as any,
+        oldValue: null,
+        newValue: { referenceStandardId: rs.referenceStandardId, usageNotes: rs.usageNotes, assetTag: stdObj?.assetTag, manufacturer: stdObj?.manufacturer, model: stdObj?.model },
+        changedBy,
+        reason: `Linked reference standard ${stdObj?.assetTag} to calibration record`,
+      });
+    }
+  }
 
   return record;
 }
@@ -243,11 +273,23 @@ import { generateSignatureHash } from '../utils/hash';
 export async function submitCalibrationForReview(id: string, signerName: string, signerRole: string, changedBy: string) {
   const record = await prisma.calibrationRecord.findUnique({
     where: { id },
-    include: { testPoints: true }
+    include: { 
+      testPoints: true,
+      referenceStandards: {
+        include: {
+          referenceStandard: true
+        }
+      }
+    }
   });
 
   if (!record) {
     throw new Error('Calibration record not found');
+  }
+
+  if (record.referenceStandards && record.referenceStandards.length > 0) {
+    const stdIds = record.referenceStandards.map(rs => rs.referenceStandardId);
+    await checkReferenceStandardsValidity(stdIds);
   }
 
   const signedAt = new Date();

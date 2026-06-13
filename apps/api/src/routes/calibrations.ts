@@ -18,6 +18,12 @@ const createCalibrationSchema = z.object({
       asLeftOutput: z.number(),
     })
   ).min(1),
+  referenceStandards: z.array(
+    z.object({
+      referenceStandardId: z.string().uuid(),
+      usageNotes: z.string().optional(),
+    })
+  ).optional(),
 });
 
 const signatureSchema = z.object({
@@ -51,6 +57,11 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         testPoints: true,
         signatures: {
           orderBy: { signedAt: 'asc' }
+        },
+        referenceStandards: {
+          include: {
+            referenceStandard: true
+          }
         }
       }
     });
@@ -71,6 +82,11 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
         testPoints: true,
         signatures: {
           orderBy: { signedAt: 'asc' }
+        },
+        referenceStandards: {
+          include: {
+            referenceStandard: true
+          }
         }
       }
     });

@@ -32,6 +32,43 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       where: { status: 'REJECTED' },
     });
 
+    // Reference Standard counts
+    const totalReferenceStandards = await prisma.referenceStandard.count();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    const now = new Date();
+
+    const standardsDueSoon = await prisma.referenceStandard.count({
+      where: {
+        OR: [
+          { status: 'DUE_SOON' },
+          {
+            status: 'ACTIVE',
+            calibrationDueDate: {
+              gte: now,
+              lte: thirtyDaysFromNow
+            }
+          }
+        ]
+      }
+    });
+
+    const expiredStandards = await prisma.referenceStandard.count({
+      where: {
+        OR: [
+          { status: 'EXPIRED' },
+          {
+            calibrationDueDate: {
+              lt: now
+            },
+            status: {
+              not: 'OUT_OF_SERVICE'
+            }
+          }
+        ]
+      }
+    });
+
     res.json({
       totalInstruments,
       calibrationsDue,
@@ -43,6 +80,9 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       pendingReviews,
       approvedRecords,
       rejectedRecords,
+      totalReferenceStandards,
+      standardsDueSoon,
+      expiredStandards,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

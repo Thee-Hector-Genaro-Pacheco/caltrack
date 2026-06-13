@@ -8,8 +8,10 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Clearing database tables...');
   await prisma.auditEvent.deleteMany({});
+  await prisma.calibrationReferenceStandard.deleteMany({});
   await prisma.calibrationTestPoint.deleteMany({});
   await prisma.calibrationRecord.deleteMany({});
+  await prisma.referenceStandard.deleteMany({});
   await prisma.instrument.deleteMany({});
   await prisma.controlLoop.deleteMany({});
   await prisma.processArea.deleteMany({});
@@ -93,6 +95,111 @@ async function main() {
         newValue: loop as any,
         changedBy: 'system@caltrack.com',
         reason: 'Control Loop Created',
+      },
+    });
+  }
+
+  console.log('Seeding Reference Standards...');
+  const stdFl754 = await prisma.referenceStandard.create({
+    data: {
+      assetTag: 'REF-FL754',
+      equipmentType: 'Documenting Process Calibrator',
+      manufacturer: 'Fluke',
+      model: '754 Documenting Process Calibrator',
+      serialNumber: 'FL754-893012',
+      accuracyClass: '±0.01% span',
+      certificateNumber: 'CERT-2025-9988',
+      lastCalibratedDate: new Date(Date.now() - 180 * 24 * 3600000), // 6 months ago
+      calibrationDueDate: new Date(Date.now() + 180 * 24 * 3600000), // 6 months from now
+      status: 'ACTIVE',
+    }
+  });
+
+  const stdFl725 = await prisma.referenceStandard.create({
+    data: {
+      assetTag: 'REF-FL725',
+      equipmentType: 'Multifunction Process Calibrator',
+      manufacturer: 'Fluke',
+      model: '725 Multifunction Process Calibrator',
+      serialNumber: 'FL725-774431',
+      accuracyClass: '±0.02% span',
+      certificateNumber: 'CERT-2026-1024',
+      lastCalibratedDate: new Date(Date.now() - 350 * 24 * 3600000), // 11 months ago
+      calibrationDueDate: new Date(Date.now() + 15 * 24 * 3600000),  // 15 days from now
+      status: 'DUE_SOON',
+    }
+  });
+
+  const stdBxMc6 = await prisma.referenceStandard.create({
+    data: {
+      assetTag: 'REF-BXMC6',
+      equipmentType: 'Advanced Field Calibrator',
+      manufacturer: 'Beamex',
+      model: 'MC6 Advanced Field Calibrator',
+      serialNumber: 'BXMC6-554129',
+      accuracyClass: '±0.005% RDG',
+      certificateNumber: 'CERT-2026-4433',
+      lastCalibratedDate: new Date(Date.now() - 90 * 24 * 3600000), // 3 months ago
+      calibrationDueDate: new Date(Date.now() + 270 * 24 * 3600000), // 9 months from now
+      status: 'ACTIVE',
+    }
+  });
+
+  const stdDr620 = await prisma.referenceStandard.create({
+    data: {
+      assetTag: 'REF-DR620',
+      equipmentType: 'Pressure Calibrator',
+      manufacturer: 'Druck',
+      model: 'DPI620 Pressure Calibrator',
+      serialNumber: 'DR620-112233',
+      accuracyClass: '±0.025% FS',
+      certificateNumber: 'CERT-2025-4859',
+      lastCalibratedDate: new Date(Date.now() - 395 * 24 * 3600000), // 13 months ago
+      calibrationDueDate: new Date(Date.now() - 30 * 24 * 3600000),  // 1 month ago
+      status: 'EXPIRED',
+    }
+  });
+
+  const stdWk7000 = await prisma.referenceStandard.create({
+    data: {
+      assetTag: 'REF-WK7000',
+      equipmentType: 'Pressure Indicator',
+      manufacturer: 'WIKA',
+      model: 'CPH7000 Pressure Indicator',
+      serialNumber: 'WK7000-482910',
+      accuracyClass: '±0.05% FS',
+      certificateNumber: 'CERT-2026-7788',
+      lastCalibratedDate: new Date(Date.now() - 240 * 24 * 3600000), // 8 months ago
+      calibrationDueDate: new Date(Date.now() + 120 * 24 * 3600000), // 4 months from now
+      status: 'OUT_OF_SERVICE',
+    }
+  });
+
+  const stdKs344 = await prisma.referenceStandard.create({
+    data: {
+      assetTag: 'REF-KS344',
+      equipmentType: 'Digital Multimeter',
+      manufacturer: 'Keysight',
+      model: '34465A Digital Multimeter',
+      serialNumber: 'KS344-992200',
+      accuracyClass: '±0.0035% span',
+      certificateNumber: 'CERT-2026-5511',
+      lastCalibratedDate: new Date(Date.now() - 150 * 24 * 3600000), // 5 months ago
+      calibrationDueDate: new Date(Date.now() + 210 * 24 * 3600000), // 7 months from now
+      status: 'ACTIVE',
+    }
+  });
+
+  // Create Audit Events for Reference Standards
+  for (const std of [stdFl754, stdFl725, stdBxMc6, stdDr620, stdWk7000, stdKs344]) {
+    await prisma.auditEvent.create({
+      data: {
+        entityType: 'ReferenceStandard',
+        entityId: std.id,
+        action: 'CREATE',
+        newValue: std as any,
+        changedBy: 'system@caltrack.com',
+        reason: 'Reference Standard Seeded',
       },
     });
   }
@@ -207,6 +314,21 @@ async function main() {
             submittedAt,
             approvedAt,
             rejectedAt,
+          }
+        });
+
+        // Link reference standard
+        let legacyStdId = stdBxMc6.id;
+        if (instrument.instrumentType.toLowerCase().includes('pressure') || instrument.instrumentType.toLowerCase().includes('valve') || instrument.instrumentType.toLowerCase().includes('switch')) {
+          legacyStdId = stdFl754.id;
+        } else if (instrument.instrumentType.toLowerCase().includes('temperature')) {
+          legacyStdId = stdKs344.id;
+        }
+        await prisma.calibrationReferenceStandard.create({
+          data: {
+            calibrationRecordId: record.id,
+            referenceStandardId: legacyStdId,
+            usageNotes: 'Legacy trace reference standard check.',
           }
         });
 
@@ -345,6 +467,21 @@ async function main() {
           },
           include: {
             testPoints: true
+          }
+        });
+
+        // Link reference standard
+        let multiStdId = stdBxMc6.id;
+        if (instrument.instrumentType.toLowerCase().includes('pressure') || instrument.instrumentType.toLowerCase().includes('valve') || instrument.instrumentType.toLowerCase().includes('switch')) {
+          multiStdId = stdFl754.id;
+        } else if (instrument.instrumentType.toLowerCase().includes('temperature')) {
+          multiStdId = stdKs344.id;
+        }
+        await prisma.calibrationReferenceStandard.create({
+          data: {
+            calibrationRecordId: record.id,
+            referenceStandardId: multiStdId,
+            usageNotes: 'Trace reference standard verification.',
           }
         });
 

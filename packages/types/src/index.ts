@@ -78,13 +78,14 @@ export interface CalibrationRecord {
   approvedAt?: Date | string | null;
   rejectedAt?: Date | string | null;
   signatures?: Signature[];
+  referenceStandards?: CalibrationReferenceStandard[];
 }
 
 export interface AuditEvent {
   id: string;
   entityType: string;
   entityId: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'SUBMIT_CALIBRATION' | 'APPROVE_CALIBRATION' | 'REJECT_CALIBRATION';
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'SUBMIT_CALIBRATION' | 'APPROVE_CALIBRATION' | 'REJECT_CALIBRATION' | 'LINK_REFERENCE_STANDARD';
   oldValue: any;
   newValue: any;
   changedBy: string;
@@ -158,12 +159,13 @@ export interface CreateCalibrationRecordDto {
   technicianName: string;
   notes?: string;
   testPoints: CreateCalibrationTestPointDto[];
+  referenceStandards?: { referenceStandardId: string; usageNotes?: string }[];
 }
 
 export interface CreateAuditEventDto {
   entityType: string;
   entityId: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'SUBMIT_CALIBRATION' | 'APPROVE_CALIBRATION' | 'REJECT_CALIBRATION';
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'SUBMIT_CALIBRATION' | 'APPROVE_CALIBRATION' | 'REJECT_CALIBRATION' | 'LINK_REFERENCE_STANDARD';
   oldValue?: any;
   newValue?: any;
   changedBy: string;
@@ -182,6 +184,9 @@ export interface DashboardStats {
   pendingReviews: number;
   approvedRecords: number;
   rejectedRecords: number;
+  totalReferenceStandards: number;
+  standardsDueSoon: number;
+  expiredStandards: number;
 }
 
 export type WorkOrderStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
@@ -233,4 +238,59 @@ export interface Signature {
   meaning: SignatureMeaning;
   signatureHash: string;
   signedAt: Date | string;
+}
+
+export type ReferenceStandardStatus = 'ACTIVE' | 'DUE_SOON' | 'EXPIRED' | 'OUT_OF_SERVICE';
+
+export interface ReferenceStandard {
+  id: string;
+  assetTag: string;
+  equipmentType: string;
+  manufacturer: string;
+  model: string;
+  serialNumber: string;
+  accuracyClass: string;
+  certificateNumber: string;
+  lastCalibratedDate: Date | string;
+  calibrationDueDate: Date | string;
+  status: ReferenceStandardStatus;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  calibrations?: CalibrationReferenceStandard[];
+}
+
+export interface CalibrationReferenceStandard {
+  id: string;
+  calibrationRecordId: string;
+  calibrationRecord?: CalibrationRecord;
+  referenceStandardId: string;
+  referenceStandard?: ReferenceStandard;
+  usageNotes?: string | null;
+}
+
+export interface CreateReferenceStandardDto {
+  assetTag: string;
+  equipmentType: string;
+  manufacturer: string;
+  model: string;
+  serialNumber: string;
+  accuracyClass: string;
+  certificateNumber: string;
+  lastCalibratedDate: string | Date;
+  calibrationDueDate: string | Date;
+  status?: ReferenceStandardStatus;
+}
+
+export interface UpdateReferenceStandardDto {
+  assetTag?: string;
+  equipmentType?: string;
+  manufacturer?: string;
+  model?: string;
+  serialNumber?: string;
+  accuracyClass?: string;
+  certificateNumber?: string;
+  lastCalibratedDate?: string | Date;
+  calibrationDueDate?: string | Date;
+  status?: ReferenceStandardStatus;
+  reason: string;
 }

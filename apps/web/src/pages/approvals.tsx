@@ -442,6 +442,55 @@ export default function Approvals() {
                 )}
               </div>
 
+              {/* Traceable Reference Standards */}
+              <div className="space-y-2.5">
+                <h4 className="font-bold text-gray-200 text-xs uppercase tracking-wider">Traceable Reference Standards (Metrology)</h4>
+                {selectedCal.referenceStandards && selectedCal.referenceStandards.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedCal.referenceStandards.map((ref) => {
+                      const std = ref.referenceStandard;
+                      if (!std) return null;
+                      return (
+                        <div key={ref.id} className="p-3 bg-[#080d16] border border-gray-800 rounded-xl flex items-center justify-between flex-wrap gap-3">
+                          <div>
+                            <div className="font-semibold text-gray-200 text-xs flex items-center gap-1.5">
+                              <span className="font-mono text-[10px] text-indigo-400 bg-indigo-500/5 px-2 py-0.5 rounded border border-indigo-500/10">
+                                {std.assetTag}
+                              </span>
+                              {std.manufacturer} {std.model}
+                            </div>
+                            <div className="text-[10px] text-gray-500 mt-1">
+                              S/N: <span className="text-gray-300 font-mono">{std.serialNumber}</span> &bull; 
+                              Cert: <span className="text-indigo-300 font-mono">{std.certificateNumber}</span> &bull;
+                              Accuracy: <span className="text-gray-300">{std.accuracyClass}</span>
+                            </div>
+                            {ref.usageNotes && (
+                              <div className="text-[10px] text-gray-400 mt-1 italic">
+                                Usage Notes: {ref.usageNotes}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold ${
+                              std.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                              std.status === 'DUE_SOON' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                              std.status === 'EXPIRED' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                              'bg-gray-500/10 text-gray-400 border border-gray-500/20'
+                            }`}>
+                              {std.status.replace('_', ' ')}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-slate-800/10 border border-gray-800 text-gray-400 text-xs rounded-xl">
+                    No reference standards linked to this calibration record.
+                  </div>
+                )}
+              </div>
+
               {/* Electronic Signature History */}
               <div className="space-y-2.5">
                 <h4 className="font-bold text-gray-200 text-xs uppercase tracking-wider">Electronic Signatures & Sign-off History</h4>

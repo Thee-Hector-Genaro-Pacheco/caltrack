@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { DashboardStats } from '@caltrack/types';
-import { Activity, AlertTriangle, Database, Layers, RefreshCw, ClipboardList, Fingerprint, CheckCircle2, XCircle } from 'lucide-react';
+import { Activity, AlertTriangle, Database, Layers, RefreshCw, ClipboardList, Fingerprint, CheckCircle2, XCircle, Scale, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDate } from '@caltrack/utils';
 
@@ -136,6 +136,61 @@ export default function Dashboard() {
           </div>
           <div className="mt-4 text-xs text-indigo-300">
             <Link to="/control-loops" className="hover:underline">View control loops →</Link>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+          <Scale className="text-indigo-400" size={20} />
+          Metrology & Traceability
+        </h2>
+        <p className="text-gray-400 text-xs mt-0.5">Reference standards status and equipment certification tracking</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-primary">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Reference Standards</p>
+              <h3 className="text-4xl font-extrabold text-white mt-2">{stats.totalReferenceStandards}</h3>
+            </div>
+            <div className="p-3 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/25">
+              <Award size={24} />
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-indigo-300">
+            <Link to="/reference-standards" className="hover:underline">View reference standards →</Link>
+          </div>
+        </div>
+
+        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-warning">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Standards Due Soon</p>
+              <h3 className="text-4xl font-extrabold text-amber-500 mt-2">{stats.standardsDueSoon}</h3>
+            </div>
+            <div className="p-3 bg-amber-500/10 rounded-lg text-amber-500 border border-amber-500/25">
+              <AlertTriangle size={24} />
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-amber-400">
+            <span>Requires calibration recall soon</span>
+          </div>
+        </div>
+
+        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-danger">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Expired Standards</p>
+              <h3 className="text-4xl font-extrabold text-red-500 mt-2">{stats.expiredStandards}</h3>
+            </div>
+            <div className="p-3 bg-red-500/10 rounded-lg text-red-500 border border-red-500/25">
+              <XCircle size={24} />
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-red-400">
+            <span>Cannot be used for compliance</span>
           </div>
         </div>
       </div>

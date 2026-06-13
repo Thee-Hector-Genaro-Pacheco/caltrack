@@ -1,5 +1,5 @@
 import { isSupabaseConfigured, supabase } from './supabase';
-import { Instrument, CalibrationRecord, AuditEvent, DashboardStats, CreateInstrumentDto, UpdateInstrumentDto, CreateCalibrationRecordDto, ProcessArea, CreateProcessAreaDto, ControlLoop, CreateControlLoopDto, WorkOrder, CreateWorkOrderDto, UpdateWorkOrderDto } from '@caltrack/types';
+import { Instrument, CalibrationRecord, AuditEvent, DashboardStats, CreateInstrumentDto, UpdateInstrumentDto, CreateCalibrationRecordDto, ProcessArea, CreateProcessAreaDto, ControlLoop, CreateControlLoopDto, WorkOrder, CreateWorkOrderDto, UpdateWorkOrderDto, ReferenceStandard, CreateReferenceStandardDto, UpdateReferenceStandardDto } from '@caltrack/types';
 
 // Mock local storage keys
 const MOCK_INSTRUMENTS_KEY = 'caltrack_mock_instruments';
@@ -8,6 +8,11 @@ const MOCK_AUDIT_KEY = 'caltrack_mock_audits';
 const MOCK_PROCESS_AREAS_KEY = 'caltrack_mock_process_areas';
 const MOCK_CONTROL_LOOPS_KEY = 'caltrack_mock_control_loops';
 const MOCK_WORK_ORDERS_KEY = 'caltrack_mock_work_orders';
+const MOCK_REFERENCE_STANDARDS_KEY = 'caltrack_mock_reference_standards';
+
+// Mock Accessors
+const getMockReferenceStandards = (): any[] => JSON.parse(localStorage.getItem(MOCK_REFERENCE_STANDARDS_KEY) || '[]');
+const saveMockReferenceStandards = (data: any[]) => localStorage.setItem(MOCK_REFERENCE_STANDARDS_KEY, JSON.stringify(data));
 
 function mockSha256(str: string): string {
   let hash = 0;
@@ -90,6 +95,102 @@ function initializeMockData() {
       }
     ];
     localStorage.setItem(MOCK_CONTROL_LOOPS_KEY, JSON.stringify(mockControlLoops));
+  }
+
+  if (!localStorage.getItem(MOCK_REFERENCE_STANDARDS_KEY)) {
+    const mockStandards = [
+      {
+        id: 'std-fl754',
+        assetTag: 'REF-FL754',
+        equipmentType: 'Documenting Process Calibrator',
+        manufacturer: 'Fluke',
+        model: '754 Documenting Process Calibrator',
+        serialNumber: 'FL754-893012',
+        accuracyClass: '±0.01% span',
+        certificateNumber: 'CERT-2025-9988',
+        lastCalibratedDate: new Date(Date.now() - 180 * 24 * 3600000).toISOString(),
+        calibrationDueDate: new Date(Date.now() + 180 * 24 * 3600000).toISOString(),
+        status: 'ACTIVE',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'std-fl725',
+        assetTag: 'REF-FL725',
+        equipmentType: 'Multifunction Process Calibrator',
+        manufacturer: 'Fluke',
+        model: '725 Multifunction Process Calibrator',
+        serialNumber: 'FL725-774431',
+        accuracyClass: '±0.02% span',
+        certificateNumber: 'CERT-2026-1024',
+        lastCalibratedDate: new Date(Date.now() - 350 * 24 * 3600000).toISOString(),
+        calibrationDueDate: new Date(Date.now() + 15 * 24 * 3600000).toISOString(),
+        status: 'DUE_SOON',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'std-bxmc6',
+        assetTag: 'REF-BXMC6',
+        equipmentType: 'Advanced Field Calibrator',
+        manufacturer: 'Beamex',
+        model: 'MC6 Advanced Field Calibrator',
+        serialNumber: 'BXMC6-554129',
+        accuracyClass: '±0.005% RDG',
+        certificateNumber: 'CERT-2026-4433',
+        lastCalibratedDate: new Date(Date.now() - 90 * 24 * 3600000).toISOString(),
+        calibrationDueDate: new Date(Date.now() + 270 * 24 * 3600000).toISOString(),
+        status: 'ACTIVE',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'std-dr620',
+        assetTag: 'REF-DR620',
+        equipmentType: 'Pressure Calibrator',
+        manufacturer: 'Druck',
+        model: 'DPI620 Pressure Calibrator',
+        serialNumber: 'DR620-112233',
+        accuracyClass: '±0.025% FS',
+        certificateNumber: 'CERT-2025-4859',
+        lastCalibratedDate: new Date(Date.now() - 395 * 24 * 3600000).toISOString(),
+        calibrationDueDate: new Date(Date.now() - 30 * 24 * 3600000).toISOString(),
+        status: 'EXPIRED',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'std-wk7000',
+        assetTag: 'REF-WK7000',
+        equipmentType: 'Pressure Indicator',
+        manufacturer: 'WIKA',
+        model: 'CPH7000 Pressure Indicator',
+        serialNumber: 'WK7000-482910',
+        accuracyClass: '±0.05% FS',
+        certificateNumber: 'CERT-2026-7788',
+        lastCalibratedDate: new Date(Date.now() - 240 * 24 * 3600000).toISOString(),
+        calibrationDueDate: new Date(Date.now() + 120 * 24 * 3600000).toISOString(),
+        status: 'OUT_OF_SERVICE',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'std-ks344',
+        assetTag: 'REF-KS344',
+        equipmentType: 'Digital Multimeter',
+        manufacturer: 'Keysight',
+        model: '34465A Digital Multimeter',
+        serialNumber: 'KS344-992200',
+        accuracyClass: '±0.0035% span',
+        certificateNumber: 'CERT-2026-5511',
+        lastCalibratedDate: new Date(Date.now() - 150 * 24 * 3600000).toISOString(),
+        calibrationDueDate: new Date(Date.now() + 210 * 24 * 3600000).toISOString(),
+        status: 'ACTIVE',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    ];
+    localStorage.setItem(MOCK_REFERENCE_STANDARDS_KEY, JSON.stringify(mockStandards));
   }
 
   if (!localStorage.getItem(MOCK_INSTRUMENTS_KEY)) {
@@ -180,6 +281,11 @@ function initializeMockData() {
       }
     ];
 
+    const stdsList = JSON.parse(localStorage.getItem(MOCK_REFERENCE_STANDARDS_KEY) || '[]');
+    const stdFl754 = stdsList.find((s: any) => s.assetTag === 'REF-FL754');
+    const stdKs344 = stdsList.find((s: any) => s.assetTag === 'REF-KS344');
+    const stdBxMc6 = stdsList.find((s: any) => s.assetTag === 'REF-BXMC6');
+
     const mockCalibrations: CalibrationRecord[] = [
       {
         id: 'cal-1',
@@ -213,7 +319,16 @@ function initializeMockData() {
             signatureHash: 'f451a44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b856',
             signedAt: new Date(Date.now() - 30 * 24 * 3600000).toISOString(),
           }
-        ]
+        ],
+        referenceStandards: stdFl754 ? [
+          {
+            id: 'mock-link-1',
+            calibrationRecordId: 'cal-1',
+            referenceStandardId: stdFl754.id,
+            usageNotes: 'Routine loop validation test.',
+            referenceStandard: stdFl754
+          }
+        ] : []
       },
       {
         id: 'cal-2',
@@ -247,7 +362,16 @@ function initializeMockData() {
             signatureHash: 'b456a44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b858',
             signedAt: new Date(Date.now() - 366 * 24 * 3600000).toISOString(),
           }
-        ]
+        ],
+        referenceStandards: stdKs344 ? [
+          {
+            id: 'mock-link-2',
+            calibrationRecordId: 'cal-2',
+            referenceStandardId: stdKs344.id,
+            usageNotes: 'Annual RTD dry block calibration.',
+            referenceStandard: stdKs344
+          }
+        ] : []
       },
       {
         id: 'cal-pending-1',
@@ -271,7 +395,16 @@ function initializeMockData() {
             signatureHash: 'c789a44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b859',
             signedAt: new Date(Date.now() - 1 * 24 * 3600000).toISOString(),
           }
-        ]
+        ],
+        referenceStandards: stdKs344 ? [
+          {
+            id: 'mock-link-3',
+            calibrationRecordId: 'cal-pending-1',
+            referenceStandardId: stdKs344.id,
+            usageNotes: 'Verify standard drift checks.',
+            referenceStandard: stdKs344
+          }
+        ] : []
       },
       {
         id: 'cal-rejected-1',
@@ -305,7 +438,16 @@ function initializeMockData() {
             signatureHash: 'e345a44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b861',
             signedAt: new Date(Date.now() - 2 * 24 * 3600000).toISOString(),
           }
-        ]
+        ],
+        referenceStandards: stdKs344 ? [
+          {
+            id: 'mock-link-4',
+            calibrationRecordId: 'cal-rejected-1',
+            referenceStandardId: stdKs344.id,
+            usageNotes: 'Dry block standard comparison.',
+            referenceStandard: stdKs344
+          }
+        ] : []
       },
       {
         id: 'cal-draft-1',
@@ -318,6 +460,15 @@ function initializeMockData() {
         notes: 'Testing in progress, saved as draft.',
         createdAt: new Date().toISOString(),
         status: 'DRAFT',
+        referenceStandards: stdBxMc6 ? [
+          {
+            id: 'mock-link-5',
+            calibrationRecordId: 'cal-draft-1',
+            referenceStandardId: stdBxMc6.id,
+            usageNotes: 'Bench verification setup.',
+            referenceStandard: stdBxMc6
+          }
+        ] : []
       }
     ];
 
@@ -462,6 +613,21 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
     const loops = getMockControlLoops();
     const wos = getMockWorkOrders();
     const cals = getMockCalibrations();
+    const standards = getMockReferenceStandards();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    const now = new Date();
+
+    const standardsDueSoon = standards.filter(std => 
+      std.status === 'DUE_SOON' || 
+      (std.status === 'ACTIVE' && new Date(std.calibrationDueDate) >= now && new Date(std.calibrationDueDate) <= thirtyDaysFromNow)
+    ).length;
+
+    const expiredStandards = standards.filter(std => 
+      std.status === 'EXPIRED' || 
+      (new Date(std.calibrationDueDate) < now && std.status !== 'OUT_OF_SERVICE')
+    ).length;
+
     return {
       totalInstruments: insts.length,
       calibrationsDue: insts.filter(i => i.status === 'CALIBRATION_DUE').length,
@@ -473,6 +639,9 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
       pendingReviews: cals.filter(c => c.status === 'PENDING_REVIEW').length,
       approvedRecords: cals.filter(c => c.status === 'APPROVED').length,
       rejectedRecords: cals.filter(c => c.status === 'REJECTED').length,
+      totalReferenceStandards: standards.length,
+      standardsDueSoon,
+      expiredStandards,
     } as any as T;
   }
 
@@ -819,6 +988,18 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
           };
         });
 
+        const referenceStandards = body.referenceStandards ? body.referenceStandards.map((rs, index) => {
+          const stds = getMockReferenceStandards();
+          const targetStd = stds.find(s => s.id === rs.referenceStandardId || s.assetTag === rs.referenceStandardId);
+          return {
+            id: `mock-link-${Date.now()}-${index}`,
+            calibrationRecordId: calId,
+            referenceStandardId: targetStd?.id || rs.referenceStandardId,
+            usageNotes: rs.usageNotes || null,
+            referenceStandard: targetStd,
+          };
+        }) : [];
+
         const newCalibration: CalibrationRecord = {
           id: calId,
           instrumentId: body.instrumentId,
@@ -830,6 +1011,7 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
           status: 'DRAFT',
           testPoints,
           signatures: [],
+          referenceStandards,
         };
 
         cals.unshift(newCalibration);
@@ -847,6 +1029,24 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
           timestamp: new Date().toISOString(),
           reason: 'Calibration Record Created (DRAFT)',
         });
+
+        if (body.referenceStandards && body.referenceStandards.length > 0) {
+          body.referenceStandards.forEach((rs, index) => {
+            const stds = getMockReferenceStandards();
+            const targetStd = stds.find(s => s.id === rs.referenceStandardId || s.assetTag === rs.referenceStandardId);
+            audits.unshift({
+              id: `aud-link-${Date.now()}-${index}`,
+              entityType: 'CalibrationRecord',
+              entityId: calId,
+              action: 'LINK_REFERENCE_STANDARD',
+              oldValue: null,
+              newValue: { referenceStandardId: targetStd?.id || rs.referenceStandardId, usageNotes: rs.usageNotes, assetTag: targetStd?.assetTag, manufacturer: targetStd?.manufacturer, model: targetStd?.model },
+              changedBy: userEmail,
+              timestamp: new Date().toISOString(),
+              reason: `Linked reference standard ${targetStd?.assetTag || 'unknown'} to calibration record`,
+            });
+          });
+        }
         saveMockAudits(audits);
 
         return newCalibration as any as T;
@@ -901,6 +1101,21 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
         const signedAt = new Date().toISOString();
 
         if (subRoute === 'submit') {
+          if (record.referenceStandards && record.referenceStandards.length > 0) {
+            const now = new Date();
+            for (const rs of record.referenceStandards) {
+              const std = rs.referenceStandard;
+              if (std) {
+                const isPastDue = new Date(std.calibrationDueDate) < now;
+                if (std.status === 'EXPIRED' || std.status === 'OUT_OF_SERVICE' || isPastDue) {
+                  const reason = std.status === 'OUT_OF_SERVICE' ? 'is out of service' : 'is expired';
+                  throw new Error(
+                    `Metrology Traceability Violation: Reference standard '${std.manufacturer} ${std.model}' (Tag: ${std.assetTag}) ${reason} and cannot be used for compliance calibrations.`
+                  );
+                }
+              }
+            }
+          }
           const { signerName, signerRole } = JSON.parse(options.body as string);
           const signatureHash = mockSha256(`${id}:${signerName}:${signerRole}:${signedAt}:PENDING_REVIEW`);
           
@@ -1248,6 +1463,92 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
     }
   }
 
+  if (path.startsWith('/api/reference-standards')) {
+    const parts = path.split('/');
+    if (parts.length === 3 && parts[2] === 'reference-standards') {
+      if (method === 'GET') {
+        return getMockReferenceStandards() as any as T;
+      }
+      if (method === 'POST') {
+        const body = JSON.parse(options.body as string) as CreateReferenceStandardDto;
+        const standards = getMockReferenceStandards();
+        const newStandard = {
+          ...body,
+          id: `std-${Date.now()}`,
+          status: body.status || 'ACTIVE',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        standards.push(newStandard);
+        saveMockReferenceStandards(standards);
+
+        // Audit log
+        const audits = getMockAudits();
+        audits.unshift({
+          id: `aud-${Date.now()}`,
+          entityType: 'ReferenceStandard',
+          entityId: newStandard.id,
+          action: 'CREATE',
+          oldValue: null,
+          newValue: newStandard,
+          changedBy: userEmail,
+          timestamp: new Date().toISOString(),
+          reason: 'Initial Reference Standard Registration',
+        });
+        saveMockAudits(audits);
+
+        return newStandard as any as T;
+      }
+    } else if (parts.length === 4) {
+      const id = parts[3];
+      const standards = getMockReferenceStandards();
+      const idx = standards.findIndex(s => s.id === id);
+      if (idx === -1) throw new Error('Reference standard not found');
+
+      if (method === 'GET') {
+        return standards[idx] as any as T;
+      }
+      if (method === 'PUT') {
+        const body = JSON.parse(options.body as string);
+        const oldStandard = standards[idx];
+        const updatedStandard = {
+          ...oldStandard,
+          ...body,
+          updatedAt: new Date().toISOString(),
+        };
+        standards[idx] = updatedStandard;
+        saveMockReferenceStandards(standards);
+
+        const changedKeys: Record<string, any> = {};
+        const originalKeys: Record<string, any> = {};
+        for (const k of Object.keys(body)) {
+          if (k === 'reason') continue;
+          if (JSON.stringify(oldStandard[k]) !== JSON.stringify(body[k])) {
+            changedKeys[k] = body[k];
+            originalKeys[k] = oldStandard[k];
+          }
+        }
+        if (Object.keys(changedKeys).length > 0) {
+          const audits = getMockAudits();
+          audits.unshift({
+            id: `aud-${Date.now()}`,
+            entityType: 'ReferenceStandard',
+            entityId: id,
+            action: 'UPDATE',
+            oldValue: originalKeys,
+            newValue: changedKeys,
+            changedBy: userEmail,
+            timestamp: new Date().toISOString(),
+            reason: body.reason || 'Reference standard details modified',
+          });
+          saveMockAudits(audits);
+        }
+
+        return updatedStandard as any as T;
+      }
+    }
+  }
+
   throw new Error(`Endpoint path ${path} not mock simulated.`);
 }
 
@@ -1309,6 +1610,16 @@ export const api = {
   }),
   generateWorkOrders: () => request<{ generatedCount: number }>('/api/work-orders/generate', {
     method: 'POST',
+  }),
+  getReferenceStandards: () => request<ReferenceStandard[]>('/api/reference-standards'),
+  getReferenceStandard: (id: string) => request<ReferenceStandard>(`/api/reference-standards/${id}`),
+  createReferenceStandard: (dto: CreateReferenceStandardDto) => request<ReferenceStandard>('/api/reference-standards', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  }),
+  updateReferenceStandard: (id: string, dto: UpdateReferenceStandardDto) => request<ReferenceStandard>(`/api/reference-standards/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(dto),
   }),
 };
 export default api;
