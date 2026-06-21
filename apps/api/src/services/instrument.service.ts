@@ -47,6 +47,21 @@ export async function getInstrumentByTagNumber(tagNumber: string) {
     },
   });
 }
+export async function getCalibrationHistoryByInstrumentId(instrumentId: string) {
+  return await prisma.calibrationRecord.findMany({
+    where: { instrumentId },
+    orderBy: { calibrationDate: 'desc' },
+    include: {
+      testPoints: true,
+      signatures: true,
+      referenceStandards: {
+        include: {
+          referenceStandard: true,
+        },
+      },
+    },
+  });
+}
 
 export async function createInstrument(dto: CreateInstrumentDto, changedBy: string) {
   let nextCalibrationDueDate = dto.nextCalibrationDueDate ? new Date(dto.nextCalibrationDueDate) : null;

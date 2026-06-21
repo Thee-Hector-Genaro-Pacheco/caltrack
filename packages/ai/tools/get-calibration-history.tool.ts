@@ -1,28 +1,30 @@
+import { getCalibrationHistoryByInstrumentId } from "../../../apps/api/src/services/instrument.service";
 import { Tool, ToolRequest, ToolResponse } from "../types/tool";
 
 export class GetCalibrationHistoryTool implements Tool {
   readonly name = "getCalibrationHistory";
   readonly description =
-    "Retrieves calibration history for an instrument by tag number or instrument id.";
+    "Retrieves real calibration history for an instrument by instrument id.";
 
   async execute(request: ToolRequest): Promise<ToolResponse> {
-    const tagNumber = request.input?.tagNumber;
     const instrumentId = request.input?.instrumentId;
 
-    if (!tagNumber && !instrumentId) {
+    if (typeof instrumentId !== "string") {
       return {
         success: false,
-        message: "Missing tagNumber or instrumentId.",
+        message: "Missing instrumentId.",
       };
     }
 
+    const calibrationHistory =
+      await getCalibrationHistoryByInstrumentId(instrumentId);
+
     return {
       success: true,
-      message: "Calibration history lookup prepared.",
+      message: `Retrieved ${calibrationHistory.length} calibration record(s).`,
       data: {
-        tagNumber,
         instrumentId,
-        note: "This tool is currently scaffolded. Next step is connecting it to CalTrack calibration records.",
+        calibrationHistory,
       },
     };
   }
