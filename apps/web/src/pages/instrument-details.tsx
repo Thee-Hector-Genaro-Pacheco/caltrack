@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../lib/api';
-import { Instrument, CalibrationRecord, WorkOrderPriority, ReferenceStandard } from '@caltrack/types';
-import { ArrowLeft, Calendar, User, FileText, Plus, ShieldAlert, Trash2, Edit3, X, ChevronDown, ChevronRight, ClipboardList, Fingerprint, Check, Award } from 'lucide-react';
+import { Instrument, CalibrationRecord, WorkOrderPriority, ReferenceStandard, CalibrationPrepGuidance } from '@caltrack/types';
+import { ArrowLeft, Calendar, User, FileText, Plus, ShieldAlert, Trash2, Edit3, X, ChevronDown, ChevronRight, ClipboardList, Fingerprint, Check, Award, Sparkles, AlertTriangle, CheckSquare, ListTodo, HelpCircle, Activity, FileCheck, Cpu } from 'lucide-react';
 import { formatDate } from '@caltrack/utils';
 
 export default function InstrumentDetails() {
@@ -46,6 +46,25 @@ export default function InstrumentDetails() {
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [availableStandards, setAvailableStandards] = useState<ReferenceStandard[]>([]);
   const [selectedStandards, setSelectedStandards] = useState<{ referenceStandardId: string; usageNotes: string }[]>([]);
+
+  const [prepGuidance, setPrepGuidance] = useState<CalibrationPrepGuidance | null>(null);
+  const [prepLoading, setPrepLoading] = useState(false);
+  const [prepError, setPrepError] = useState<string | null>(null);
+
+  const handleGeneratePrep = async () => {
+    if (!id) return;
+    setPrepLoading(true);
+    setPrepError(null);
+    try {
+      const guidance = await api.generateCalibrationPrep(id);
+      setPrepGuidance(guidance);
+    } catch (err: any) {
+      console.error(err);
+      setPrepError(err.message || 'Failed to generate calibration prep guidance.');
+    } finally {
+      setPrepLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (isCalModalOpen && instrument) {
@@ -460,15 +479,202 @@ export default function InstrumentDetails() {
             </p>
           </div>
 
-          <button
-            onClick={() => setIsCalModalOpen(true)}
-            className="w-full btn-transition bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg text-sm flex items-center justify-center gap-2 mt-6 shadow-lg shadow-indigo-600/10"
-          >
-            <Plus size={16} />
-            Add Calibration Record
-          </button>
+          <div className="space-y-3 mt-6">
+            <button
+              onClick={() => setIsCalModalOpen(true)}
+              className="w-full btn-transition bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/10"
+            >
+              <Plus size={16} />
+              Add Calibration Record
+            </button>
+            <button
+              onClick={handleGeneratePrep}
+              disabled={prepLoading}
+              className="w-full btn-transition bg-[#1f2937] hover:bg-[#374151] border border-white/5 text-gray-200 font-semibold py-2.5 px-4 rounded-lg text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <Sparkles size={16} className="text-indigo-400" />
+              {prepLoading ? 'Generating...' : 'Generate Calibration Prep'}
+            </button>
+          </div>
         </div>
       </div>
+
+      {prepError && (
+        <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl flex gap-3 text-xs leading-relaxed">
+          <ShieldAlert className="shrink-0 text-red-500" size={18} />
+          <div>
+            <span className="font-semibold uppercase tracking-wider block mb-0.5">Error Generating Prep Guidance</span>
+            {prepError}
+          </div>
+        </div>
+      )}
+
+      {prepGuidance && (
+        <div className="glass-card p-6 rounded-xl border border-white/5 space-y-6 glow-primary relative">
+          <div className="flex items-center justify-between border-b border-gray-800/80 pb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-indigo-600/15 rounded-lg border border-indigo-500/20 text-indigo-400">
+                <Cpu size={22} className="animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
+                  AI Calibration Prep Guidance
+                  <span className="text-[10px] uppercase font-bold tracking-wider bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded">
+                    Technician Assistant
+                  </span>
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">Custom field calibration procedure & target values for {instrument.tagNumber}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setPrepGuidance(null)}
+              className="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors"
+              title="Close Guidance"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Disclaimer Banner */}
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-xl flex gap-3 text-xs leading-relaxed">
+            <AlertTriangle className="shrink-0 text-amber-500" size={18} />
+            <div>
+              <span className="font-semibold uppercase tracking-wider block mb-0.5">Safety & Quality Disclaimer</span>
+              {prepGuidance.disclaimer}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Required Equipment Checklist */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2 uppercase tracking-wider">
+                <CheckSquare size={16} className="text-indigo-400" />
+                Required Equipment
+              </h4>
+              <ul className="space-y-2 bg-[#090d16]/40 border border-gray-800/80 rounded-xl p-4 text-xs text-gray-300">
+                {prepGuidance.requiredEquipment.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0"></span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Reference Standards Needed */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2 uppercase tracking-wider">
+                <Award size={16} className="text-indigo-400" />
+                Reference Standards Needed
+              </h4>
+              <ul className="space-y-2 bg-[#090d16]/40 border border-gray-800/80 rounded-xl p-4 text-xs text-gray-300">
+                {prepGuidance.referenceStandards.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0"></span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Safety Precautions & Setup Instructions */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Safety Precautions */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2 uppercase tracking-wider">
+                <ShieldAlert size={16} className="text-red-400" />
+                Safety Precautions
+              </h4>
+              <ul className="space-y-2 bg-[#090d16]/40 border border-gray-800/80 rounded-xl p-4 text-xs text-gray-300">
+                {prepGuidance.safetyPrecautions.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 shrink-0"></span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Setup Instructions */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2 uppercase tracking-wider">
+                <ListTodo size={16} className="text-indigo-400" />
+                Setup & Connection Instructions
+              </h4>
+              <ol className="space-y-2.5 bg-[#090d16]/40 border border-gray-800/80 rounded-xl p-4 text-xs text-gray-300 list-decimal pl-6">
+                {prepGuidance.setupInstructions.map((item, idx) => (
+                  <li key={idx} className="leading-relaxed">
+                    {item}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+
+          {/* 5-Point Calibration targets */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-bold text-white flex items-center gap-2 uppercase tracking-wider">
+              <Activity size={16} className="text-indigo-400" />
+              5-Point Calibration Target Points
+            </h4>
+            <div className="overflow-x-auto border border-gray-800 rounded-xl">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-900/80 border-b border-gray-800 text-gray-400 font-semibold uppercase tracking-wider">
+                    <th className="p-3 text-center w-24">% Test Point</th>
+                    <th className="p-3">Target Input Value ({instrument.engineeringUnits})</th>
+                    <th className="p-3">Expected Output ({instrument.signalType})</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800/40 text-gray-300 font-mono">
+                  {prepGuidance.testPoints.map((pt, idx) => (
+                    <tr key={idx} className="hover:bg-white/5 bg-[#090d16]/10">
+                      <td className="p-3 text-center font-bold text-indigo-400 bg-indigo-500/5">{pt.percent}%</td>
+                      <td className="p-3">{pt.targetInput.toFixed(2)} {instrument.engineeringUnits}</td>
+                      <td className="p-3">{pt.expectedOutput.toFixed(2)} {instrument.signalType === '4-20 mA' ? 'mA' : instrument.engineeringUnits}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Documentation Checklist */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2 uppercase tracking-wider">
+                <FileCheck size={16} className="text-indigo-400" />
+                Documentation Checklist
+              </h4>
+              <ul className="space-y-2 bg-[#090d16]/40 border border-gray-800/80 rounded-xl p-4 text-xs text-gray-300">
+                {prepGuidance.documentationChecklist.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0"></span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Common Failure Reasons */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2 uppercase tracking-wider">
+                <HelpCircle size={16} className="text-amber-400" />
+                Common Failure Reasons
+              </h4>
+              <ul className="space-y-2 bg-[#090d16]/40 border border-gray-800/80 rounded-xl p-4 text-xs text-gray-300">
+                {prepGuidance.commonFailureReasons.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="glass-card p-6 rounded-xl border border-white/5">
         <h3 className="text-lg font-bold text-white mb-6">Calibration History Log</h3>

@@ -294,3 +294,19 @@ export interface UpdateReferenceStandardDto {
   status?: ReferenceStandardStatus;
   reason: string;
 }
+
+export interface CalibrationPrepGuidance {
+  requiredEquipment: string[];
+  referenceStandards: string[];
+  safetyPrecautions: string[];
+  setupInstructions: string[];
+  testPoints: {
+    percent: number;
+    targetInput: number;
+    expectedOutput: number;
+  }[];
+  documentationChecklist: string[];
+  commonFailureReasons: string[];
+  disclaimer: string;
+}
+

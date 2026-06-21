@@ -10,6 +10,8 @@ import processAreasRouter from './routes/process-areas';
 import controlLoopsRouter from './routes/control-loops';
 import workOrdersRouter from './routes/work-orders';
 import referenceStandardsRouter from './routes/reference-standards';
+import aiRouter from './routes/ai';
+
 
 dotenv.config();
 
@@ -36,6 +38,8 @@ app.use('/api/process-areas', requireAuth, processAreasRouter);
 app.use('/api/control-loops', requireAuth, controlLoopsRouter);
 app.use('/api/work-orders', requireAuth, workOrdersRouter);
 app.use('/api/reference-standards', requireAuth, referenceStandardsRouter);
+app.use('/api/ai', requireAuth, aiRouter);
+
 
 // Global Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
