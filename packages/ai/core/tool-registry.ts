@@ -22,5 +22,4 @@ export class ToolRegistry {
   has(name: string): boolean {
     return this.tools.has(name);
   }
-
 }

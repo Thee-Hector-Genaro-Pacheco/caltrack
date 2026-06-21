@@ -11,19 +11,13 @@ export interface ToolRequest {
 
 export interface ToolResponse {
   success: boolean;
-
   message: string;
-
   data?: Record<string, unknown>;
 }
 
 export interface Tool {
-
   readonly name: string;
-
   readonly description: string;
 
-  execute(
-    request: ToolRequest
-  ): Promise<ToolResponse>;
+  execute(request: ToolRequest): Promise<ToolResponse>;
 }

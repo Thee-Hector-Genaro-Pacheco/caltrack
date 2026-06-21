@@ -2,9 +2,7 @@ import { AgentRegistry } from "./registry";
 import { ToolRegistry } from "./tool-registry";
 
 export class AIEngine {
-
   readonly agents: AgentRegistry;
-
   readonly tools: ToolRegistry;
 
   constructor() {
@@ -15,5 +13,4 @@ export class AIEngine {
   initialize(): void {
     console.log("🚀 CalTrack AI Engine initialized.");
   }
-
 }

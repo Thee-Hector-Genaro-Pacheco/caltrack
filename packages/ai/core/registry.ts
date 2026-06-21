@@ -4,6 +4,7 @@ import { Agent } from "../types/agent";
  * Central registry for all available AI agents.
  * The Supervisor uses this registry to discover and retrieve agents.
  */
+
 export class AgentRegistry {
   private readonly agents = new Map<string, Agent>();
 
