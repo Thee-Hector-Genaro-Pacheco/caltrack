@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@caltrack/ai": "*",
     "@caltrack/types": "*",
     "@caltrack/utils": "*",
     "@supabase/supabase-js": "^2.43.4",

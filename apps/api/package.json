@@ -16,6 +16,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@caltrack/ai": "*",
     "@caltrack/types": "*",
     "@caltrack/utils": "*",
     "@prisma/client": "^5.15.0",

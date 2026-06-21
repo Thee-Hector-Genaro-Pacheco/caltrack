@@ -1,5 +1,5 @@
 import { isSupabaseConfigured, supabase } from './supabase';
-import { Instrument, CalibrationRecord, AuditEvent, DashboardStats, CreateInstrumentDto, UpdateInstrumentDto, CreateCalibrationRecordDto, ProcessArea, CreateProcessAreaDto, ControlLoop, CreateControlLoopDto, WorkOrder, CreateWorkOrderDto, UpdateWorkOrderDto, ReferenceStandard, CreateReferenceStandardDto, UpdateReferenceStandardDto, CalibrationPrepGuidance } from '@caltrack/types';
+import { Instrument, CalibrationRecord, AuditEvent, DashboardStats, CreateInstrumentDto, UpdateInstrumentDto, CreateCalibrationRecordDto, ProcessArea, CreateProcessAreaDto, ControlLoop, CreateControlLoopDto, WorkOrder, CreateWorkOrderDto, UpdateWorkOrderDto, ReferenceStandard, CreateReferenceStandardDto, UpdateReferenceStandardDto, CalibrationPrepGuidance, TechnicianBriefing } from '@caltrack/types';
 
 // Mock local storage keys
 const MOCK_INSTRUMENTS_KEY = 'caltrack_mock_instruments';
@@ -605,6 +605,165 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
   const url = new URL(endpoint, 'http://localhost');
   const path = url.pathname;
   const userEmail = localStorage.getItem('caltrack_user_email') || 'admin@caltrack.com';
+
+  if (path === '/api/ai/calibration-brief') {
+    const body = JSON.parse(options.body as string);
+    const instrumentId = body.instrumentId;
+    const insts = getMockInstruments();
+    const instrument = insts.find(i => i.id === instrumentId);
+    if (!instrument) throw new Error('Instrument not found');
+
+    const allCals = getMockCalibrations();
+    const calibrationHistory = allCals.filter(c => c.instrumentId === instrumentId);
+
+    const allStandards = getMockReferenceStandards();
+    const typeLower = (instrument.instrumentType || '').toLowerCase();
+    const signalLower = (instrument.signalType || '').toLowerCase();
+
+    const matchedStandards = allStandards.filter(standard => {
+      if (standard.status === "EXPIRED" || standard.status === "OUT_OF_SERVICE") {
+        return false;
+      }
+      const equipmentType = standard.equipmentType.toLowerCase();
+      const model = standard.model.toLowerCase();
+      const manufacturer = standard.manufacturer.toLowerCase();
+
+      if (
+        typeLower.includes("pressure") &&
+        (equipmentType.includes("pressure") || model.includes("dpi") || model.includes("cph"))
+      ) {
+        return true;
+      }
+      if (
+        signalLower.includes("4-20") &&
+        (equipmentType.includes("process") || equipmentType.includes("multifunction") || manufacturer.includes("fluke") || manufacturer.includes("beamex"))
+      ) {
+        return true;
+      }
+      if (
+        typeLower.includes("temperature") &&
+        (equipmentType.includes("temperature") || equipmentType.includes("rtd") || equipmentType.includes("thermocouple") || equipmentType.includes("multifunction"))
+      ) {
+        return true;
+      }
+      return false;
+    });
+
+    const testPoints: { percent: number; targetInput: number; expectedOutput: number }[] = [];
+    const percents = [0, 25, 50, 75, 100];
+    for (const p of percents) {
+      const percentDecimal = p / 100;
+      const targetInput = instrument.rangeMin + percentDecimal * (instrument.rangeMax - instrument.rangeMin);
+      let expectedOutput = targetInput;
+      if (instrument.signalType === '4-20 mA') {
+        expectedOutput = 4 + 16 * percentDecimal;
+      }
+      testPoints.push({
+        percent: p,
+        targetInput: Math.round(targetInput * 100) / 100,
+        expectedOutput: Math.round(expectedOutput * 100) / 100,
+      });
+    }
+
+    const checklist = [
+      "Verify isolation",
+      "Verify zero",
+      "Perform 5-point calibration",
+      "Record As Found",
+      "Record As Left",
+      "Verify MPE",
+      "Submit for QA Review"
+    ];
+
+    let lastCalibrationDate = "Never Calibrated";
+    let passFail = "N/A";
+    let previousTechnician = "N/A";
+
+    if (calibrationHistory.length > 0) {
+      const sortedHistory = [...calibrationHistory].sort(
+        (a: any, b: any) => new Date(b.calibrationDate).getTime() - new Date(a.calibrationDate).getTime()
+      );
+      const lastRecord = sortedHistory[0];
+      lastCalibrationDate = new Date(lastRecord.calibrationDate).toLocaleDateString();
+      passFail = lastRecord.passFail ? "PASS" : "FAIL";
+      previousTechnician = lastRecord.technicianName || "Unknown";
+    }
+
+    const formattedStandards = matchedStandards.map((std: any) => {
+      const isExpired = std.status === "EXPIRED" || new Date(std.calibrationDueDate).getTime() < Date.now();
+      return {
+        assetTag: std.assetTag,
+        equipmentType: std.equipmentType,
+        manufacturer: std.manufacturer,
+        model: std.model,
+        calibrationDueDate: new Date(std.calibrationDueDate).toLocaleDateString(),
+        status: std.status,
+        isExpired,
+        accuracyClass: std.accuracyClass,
+      };
+    });
+
+    const recommendations: string[] = [];
+    if (instrument.status === "OVERDUE") {
+      recommendations.push("🚨 Calibration is OVERDUE. Schedule calibration immediately to prevent measurement drift.");
+    } else if (instrument.status === "CALIBRATION_DUE") {
+      recommendations.push("⚠️ Calibration is due soon. Schedule verification before the deadline.");
+    }
+    if (instrument.maxPermissibleError <= 0.25) {
+      recommendations.push(`🎯 Precision device (MPE ±${instrument.maxPermissibleError}%): Use high-accuracy standards and minimize environment noise.`);
+    }
+
+    const lastCalFailed = calibrationHistory.some((rec: any, idx: number) => idx === 0 && !rec.passFail);
+    if (lastCalFailed) {
+      recommendations.push("🔍 The last calibration failed. Conduct thorough visual checks and test connections for leakage.");
+    }
+    if (formattedStandards.length === 0) {
+      recommendations.push("🚫 No active reference standards were found matching this instrument category. Check standard inventory.");
+    } else {
+      const anyExpired = formattedStandards.some(s => s.isExpired);
+      if (anyExpired) {
+        recommendations.push("🛑 Warning: One or more recommended reference standards are expired. Use only valid active equipment.");
+      }
+      const anyDueSoon = formattedStandards.some(s => !s.isExpired && (new Date(s.calibrationDueDate).getTime() - Date.now()) < 30 * 24 * 3600000);
+      if (anyDueSoon) {
+        recommendations.push("⏳ Note: Some recommended reference standards are due for calibration within 30 days.");
+      }
+    }
+
+    const loops = getMockControlLoops();
+    const areas = getMockProcessAreas();
+    const loop = loops.find(l => l.id === instrument.controlLoopId);
+    const area = areas.find(a => a.id === instrument.processAreaId);
+
+    const processAreaStr = area ? `${area.areaCode} - ${area.name}` : "N/A";
+    const controlLoopStr = loop ? `${loop.loopTag} (${loop.loopNumber})` : "N/A";
+
+    const briefing: TechnicianBriefing = {
+      instrumentInfo: {
+        tagNumber: instrument.tagNumber,
+        manufacturer: instrument.manufacturer,
+        model: instrument.model,
+        instrumentType: instrument.instrumentType,
+        range: `${instrument.rangeMin} - ${instrument.rangeMax} ${instrument.engineeringUnits}`,
+        signalType: instrument.signalType,
+        location: instrument.location,
+        processArea: processAreaStr,
+        controlLoop: controlLoopStr,
+      },
+      calibrationHistory: {
+        lastCalibrationDate,
+        passFail,
+        previousTechnician,
+        numberOfHistoricalCalibrations: calibrationHistory.length,
+      },
+      referenceStandards: formattedStandards,
+      calibrationChecklist: checklist,
+      testPoints,
+      recommendations: Array.from(new Set(recommendations)),
+    };
+
+    return briefing as any as T;
+  }
 
   if (path.startsWith('/api/ai/calibration-prep/')) {
     const parts = path.split('/');
@@ -1845,6 +2004,10 @@ export const api = {
   }),
   generateCalibrationPrep: (id: string) => request<CalibrationPrepGuidance>(`/api/ai/calibration-prep/${id}`, {
     method: 'POST',
+  }),
+  getCalibrationBrief: (instrumentId: string) => request<TechnicianBriefing>('/api/ai/calibration-brief', {
+    method: 'POST',
+    body: JSON.stringify({ instrumentId }),
   }),
 };
 export default api;

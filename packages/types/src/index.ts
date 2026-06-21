@@ -310,3 +310,41 @@ export interface CalibrationPrepGuidance {
   disclaimer: string;
 }
 
+export interface TechnicianBriefing {
+  instrumentInfo: {
+    tagNumber: string;
+    manufacturer: string;
+    model: string;
+    instrumentType: string;
+    range: string;
+    signalType: string;
+    location: string;
+    processArea: string;
+    controlLoop: string;
+  };
+  calibrationHistory: {
+    lastCalibrationDate: string;
+    passFail: string;
+    previousTechnician: string;
+    numberOfHistoricalCalibrations: number;
+  };
+  referenceStandards: {
+    assetTag: string;
+    equipmentType: string;
+    manufacturer: string;
+    model: string;
+    calibrationDueDate: string;
+    status: string;
+    isExpired: boolean;
+    accuracyClass: string;
+  }[];
+  calibrationChecklist: string[];
+  testPoints: {
+    percent: number;
+    targetInput: number;
+    expectedOutput: number;
+  }[];
+  recommendations: string[];
+}
+
+
