@@ -24,53 +24,40 @@ export class SupervisorAgent implements Agent {
       selectedAgents.push("documentation");
     }
 
-    if (
-      goal.includes("reference standard") ||
-      goal.includes("nist") ||
-      goal.includes("traceability")
-    ) {
-      selectedAgents.push("metrology");
-    }
+    const subagentResponses: AgentResponse[] = [];
 
-    if (
-      goal.includes("work order") ||
-      goal.includes("schedule") ||
-      goal.includes("planning")
-    ) {
-      selectedAgents.push("planning");
-    }
+    for (const agentName of selectedAgents) {
+      const agent = this.registry.get(agentName);
 
-    if (
-      goal.includes("approve") ||
-      goal.includes("reject") ||
-      goal.includes("review") ||
-      goal.includes("qa")
-    ) {
-      selectedAgents.push("qa");
-    }
+      if (!agent) {
+        subagentResponses.push({
+          success: false,
+          agent: agentName,
+          summary: `Agent "${agentName}" is not registered.`,
+        });
+        continue;
+      }
 
-    if (
-      goal.includes("report") ||
-      goal.includes("summary") ||
-      goal.includes("dashboard")
-    ) {
-      selectedAgents.push("reporting");
+      const response = await agent.execute(request);
+      subagentResponses.push(response);
     }
 
     return {
       success: true,
       agent: this.name,
       summary:
-        selectedAgents.length > 0
-          ? `Supervisor selected: ${selectedAgents.join(", ")}`
+        subagentResponses.length > 0
+          ? `Supervisor executed ${subagentResponses.length} subagent(s): ${selectedAgents.join(", ")}.`
           : "Supervisor could not identify a specific specialist agent yet.",
       data: {
         selectedAgents,
+        subagentResponses,
         originalGoal: request.goal,
       },
-      recommendations: [
-        "Next step: execute selected subagents and combine their responses.",
-      ],
+      recommendations:
+        subagentResponses.length > 0
+          ? subagentResponses.flatMap((response) => response.recommendations ?? [])
+          : ["Try asking about calibration, procedures, manuals, or documentation."],
     };
   }
 }
