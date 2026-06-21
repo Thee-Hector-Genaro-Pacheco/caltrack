@@ -40,6 +40,7 @@ model Instrument {
   lastCalibrationDate       DateTime?
   nextCalibrationDueDate    DateTime?
   workOrders                WorkOrder[]
+  documents                 Documentation[] @relation("InstrumentDocumentation")
 }
 
 model ProcessArea {
@@ -201,4 +202,25 @@ model CalibrationReferenceStandard {
   referenceStandardId String
   referenceStandard   ReferenceStandard @relation(fields: [referenceStandardId], references: [id], onDelete: Restrict)
   usageNotes          String?
+}
+
+model Documentation {
+  id                String       @id @default(uuid())
+  title             String
+  description       String?
+  documentNumber    String       @unique
+  revision          String
+  manufacturer      String?
+  instrumentType    String?
+  equipmentCategory String?
+  documentType      String
+  tags              String[]
+  uploadDate        DateTime     @default(now())
+  fileLocation      String
+  status            String       @default("ACTIVE")
+  
+  instruments       Instrument[] @relation("InstrumentDocumentation")
+  
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 }

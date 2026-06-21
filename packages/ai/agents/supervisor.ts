@@ -92,6 +92,27 @@ export class SupervisorAgent implements Agent {
       const testPoints = calAgentData.testPoints || [];
       const checklist = calAgentData.checklist || [];
 
+      // 4b. Delegate to DocumentationAgent for relevant drawings and procedures
+      const documentationAgent = this.registry.get("documentation");
+      if (!documentationAgent) {
+        throw new Error("documentation agent not found in agent registry");
+      }
+
+      const docAgentResponse = await documentationAgent.execute({
+        goal: `Retrieve technical documentation for ${instrument.tagNumber}`,
+        context: { instrument },
+      });
+
+      const docAgentData = docAgentResponse.data || {};
+      const technicalDocumentation = docAgentData.technicalDocumentation || {
+        recommendedProcedure: null,
+        manufacturerManual: null,
+        installationGuide: null,
+        safetyNotes: null,
+        troubleshootingGuide: null,
+        relatedDrawings: [],
+      };
+
       // 5. Build History Metrics
       let lastCalibrationDate = "Never Calibrated";
       let passFail = "N/A";
@@ -187,6 +208,9 @@ export class SupervisorAgent implements Agent {
       if (calAgentResponse.recommendations) {
         recommendations.push(...calAgentResponse.recommendations);
       }
+      if (docAgentResponse.recommendations) {
+        recommendations.push(...docAgentResponse.recommendations);
+      }
 
       // 8. Assemble structured briefing
       const processAreaStr = instrument.processArea
@@ -218,6 +242,7 @@ export class SupervisorAgent implements Agent {
         calibrationChecklist: checklist,
         testPoints, // Include testPoints for the modal targets rendering
         recommendations: Array.from(new Set(recommendations)), // Deduplicate
+        technicalDocumentation,
       };
 
       return {

@@ -1,5 +1,5 @@
 import { isSupabaseConfigured, supabase } from './supabase';
-import { Instrument, CalibrationRecord, AuditEvent, DashboardStats, CreateInstrumentDto, UpdateInstrumentDto, CreateCalibrationRecordDto, ProcessArea, CreateProcessAreaDto, ControlLoop, CreateControlLoopDto, WorkOrder, CreateWorkOrderDto, UpdateWorkOrderDto, ReferenceStandard, CreateReferenceStandardDto, UpdateReferenceStandardDto, CalibrationPrepGuidance, TechnicianBriefing } from '@caltrack/types';
+import { Instrument, CalibrationRecord, AuditEvent, DashboardStats, CreateInstrumentDto, UpdateInstrumentDto, CreateCalibrationRecordDto, ProcessArea, CreateProcessAreaDto, ControlLoop, CreateControlLoopDto, WorkOrder, CreateWorkOrderDto, UpdateWorkOrderDto, ReferenceStandard, CreateReferenceStandardDto, UpdateReferenceStandardDto, CalibrationPrepGuidance, TechnicianBriefing, Documentation, CreateDocumentationDto, UpdateDocumentationDto } from '@caltrack/types';
 
 // Mock local storage keys
 const MOCK_INSTRUMENTS_KEY = 'caltrack_mock_instruments';
@@ -9,10 +9,13 @@ const MOCK_PROCESS_AREAS_KEY = 'caltrack_mock_process_areas';
 const MOCK_CONTROL_LOOPS_KEY = 'caltrack_mock_control_loops';
 const MOCK_WORK_ORDERS_KEY = 'caltrack_mock_work_orders';
 const MOCK_REFERENCE_STANDARDS_KEY = 'caltrack_mock_reference_standards';
+const MOCK_DOCUMENTATION_KEY = 'caltrack_mock_documentation';
 
 // Mock Accessors
 const getMockReferenceStandards = (): any[] => JSON.parse(localStorage.getItem(MOCK_REFERENCE_STANDARDS_KEY) || '[]');
 const saveMockReferenceStandards = (data: any[]) => localStorage.setItem(MOCK_REFERENCE_STANDARDS_KEY, JSON.stringify(data));
+const getMockDocumentation = (): Documentation[] => JSON.parse(localStorage.getItem(MOCK_DOCUMENTATION_KEY) || '[]');
+const saveMockDocumentation = (data: Documentation[]) => localStorage.setItem(MOCK_DOCUMENTATION_KEY, JSON.stringify(data));
 
 function mockSha256(str: string): string {
   let hash = 0;
@@ -544,6 +547,63 @@ function initializeMockData() {
     localStorage.setItem(MOCK_AUDIT_KEY, JSON.stringify(mockAudits));
     localStorage.setItem(MOCK_WORK_ORDERS_KEY, JSON.stringify(mockWorkOrders));
   }
+
+  if (!localStorage.getItem(MOCK_DOCUMENTATION_KEY)) {
+    const mockDocumentation: Documentation[] = [
+      {
+        id: 'doc-1',
+        title: 'Boiler Header Calibration Procedure',
+        description: 'Standard operating procedure for calibrating steam header pressure transmitters.',
+        documentNumber: 'SOP-CAL-PT-101',
+        revision: '1.2',
+        manufacturer: 'ABB',
+        instrumentType: 'Pressure Transmitter',
+        equipmentCategory: 'Pressure',
+        documentType: 'Calibration Procedures',
+        tags: ['boiler', 'pressure', 'steam'],
+        uploadDate: new Date(Date.now() - 45 * 24 * 3600000).toISOString(),
+        fileLocation: '/documents/procedures/SOP-CAL-PT-101.pdf',
+        status: 'ACTIVE',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'doc-2',
+        title: 'ABB 266 Series Gauge Pressure Manual',
+        description: 'Manufacturer manual for ABB 266GST and 266MST transmitters.',
+        documentNumber: 'MAN-ABB-266',
+        revision: 'B.0',
+        manufacturer: 'ABB',
+        instrumentType: 'Pressure Transmitter',
+        equipmentCategory: 'Pressure',
+        documentType: 'Manufacturer Manuals',
+        tags: ['manual', 'abb', 'pressure'],
+        uploadDate: new Date(Date.now() - 10 * 24 * 3600000).toISOString(),
+        fileLocation: '/documents/manuals/ABB-266-Manual.pdf',
+        status: 'ACTIVE',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'doc-3',
+        title: 'Rosemount RTD Sensor Installation Guide',
+        description: 'Installation and wiring instructions for Rosemount 0065 RTD sensors.',
+        documentNumber: 'INST-RM-0065',
+        revision: '3',
+        manufacturer: 'Rosemount',
+        instrumentType: 'Temperature Element',
+        equipmentCategory: 'Temperature',
+        documentType: 'Installation Guides',
+        tags: ['rtd', 'temperature', 'install'],
+        uploadDate: new Date(Date.now() - 5 * 24 * 3600000).toISOString(),
+        fileLocation: '/documents/installation/Rosemount-0065.pdf',
+        status: 'ACTIVE',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    ];
+    localStorage.setItem(MOCK_DOCUMENTATION_KEY, JSON.stringify(mockDocumentation));
+  }
 }
 
 // Ensure mock registry has data
@@ -738,6 +798,93 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
     const processAreaStr = area ? `${area.areaCode} - ${area.name}` : "N/A";
     const controlLoopStr = loop ? `${loop.loopTag} (${loop.loopNumber})` : "N/A";
 
+    const docList = getMockDocumentation();
+    const activeDocs = docList.filter(d => d.status === "ACTIVE");
+
+    // Match criteria
+    const matchedDocs = activeDocs.filter(d => {
+      // 1. Explicit association
+      if ((d as any).instrumentIds?.includes(instrumentId) || (d as any).instruments?.some((i: any) => i.id === instrumentId)) {
+        return true;
+      }
+      // 2. Manufacturer and type match
+      if (d.manufacturer?.toLowerCase() === instrument.manufacturer.toLowerCase() &&
+          d.instrumentType?.toLowerCase() === instrument.instrumentType.toLowerCase()) {
+        return true;
+      }
+      // 3. Model match in title/desc
+      if (instrument.model && (d.title.toLowerCase().includes(instrument.model.toLowerCase()) || d.description?.toLowerCase().includes(instrument.model.toLowerCase()))) {
+        return true;
+      }
+      // 4. Tag match
+      if (d.tags?.some(tag => tag.toLowerCase() === instrument.tagNumber.toLowerCase() || instrument.tagNumber.toLowerCase().includes(tag.toLowerCase()))) {
+        return true;
+      }
+      return false;
+    });
+
+    const recommendedProcedureDoc = matchedDocs.find(d => 
+      d.documentType === "Calibration Procedures" || 
+      d.documentType === "SOPs" || 
+      d.documentType === "Maintenance Procedures"
+    );
+
+    const manufacturerManualDoc = matchedDocs.find(d => 
+      d.documentType === "Manufacturer Manuals"
+    );
+
+    const installationGuideDoc = matchedDocs.find(d => 
+      d.documentType === "Installation Guides"
+    );
+
+    const safetyNotesDoc = matchedDocs.find(d => 
+      d.documentType === "Safety Procedures"
+    );
+
+    const troubleshootingGuideDoc = matchedDocs.find(d => 
+      d.documentType === "Troubleshooting Guides"
+    );
+
+    const drawingDocs = matchedDocs.filter(d => 
+      d.documentType === "Wiring Diagrams" || 
+      d.documentType === "P&IDs" || 
+      d.documentType === "Loop Drawings"
+    );
+
+    const mapToBriefItem = (doc: any) => ({
+      id: doc.id,
+      title: doc.title,
+      documentNumber: doc.documentNumber,
+      revision: doc.revision,
+      fileLocation: doc.fileLocation,
+      documentType: doc.documentType,
+    });
+
+    const technicalDocumentation = {
+      recommendedProcedure: recommendedProcedureDoc ? mapToBriefItem(recommendedProcedureDoc) : null,
+      manufacturerManual: manufacturerManualDoc ? mapToBriefItem(manufacturerManualDoc) : null,
+      installationGuide: installationGuideDoc ? mapToBriefItem(installationGuideDoc) : null,
+      safetyNotes: safetyNotesDoc ? mapToBriefItem(safetyNotesDoc) : null,
+      troubleshootingGuide: troubleshootingGuideDoc ? mapToBriefItem(troubleshootingGuideDoc) : null,
+      relatedDrawings: drawingDocs.map(mapToBriefItem),
+    };
+
+    if (recommendedProcedureDoc) {
+      recommendations.push(
+        `📖 Reference approved procedure ${recommendedProcedureDoc.documentNumber} Rev ${recommendedProcedureDoc.revision} during calibration.`
+      );
+    } else {
+      recommendations.push(
+        "⚠️ Warning: No official Calibration Procedure or SOP is linked to this instrument."
+      );
+    }
+
+    if (safetyNotesDoc) {
+      recommendations.push(
+        `🔒 Review safety procedures in ${safetyNotesDoc.title} before work.`
+      );
+    }
+
     const briefing: TechnicianBriefing = {
       instrumentInfo: {
         tagNumber: instrument.tagNumber,
@@ -760,6 +907,7 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
       calibrationChecklist: checklist,
       testPoints,
       recommendations: Array.from(new Set(recommendations)),
+      technicalDocumentation,
     };
 
     return briefing as any as T;
@@ -1024,6 +1172,150 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
       standardsDueSoon,
       expiredStandards,
     } as any as T;
+  }
+
+  if (path === '/api/documentation') {
+    const docs = getMockDocumentation();
+    if (method === 'GET') {
+      const search = url.searchParams.get('search');
+      const manufacturer = url.searchParams.get('manufacturer');
+      const instrumentType = url.searchParams.get('instrumentType');
+      const status = url.searchParams.get('status');
+      
+      let filtered = [...docs];
+      if (status) {
+        filtered = filtered.filter(d => d.status === status);
+      }
+      if (manufacturer) {
+        filtered = filtered.filter(d => d.manufacturer?.toLowerCase() === manufacturer.toLowerCase());
+      }
+      if (instrumentType) {
+        filtered = filtered.filter(d => d.instrumentType?.toLowerCase() === instrumentType.toLowerCase());
+      }
+      if (search) {
+        const searchLower = search.toLowerCase();
+        filtered = filtered.filter(d => 
+          d.title.toLowerCase().includes(searchLower) ||
+          d.description?.toLowerCase().includes(searchLower) ||
+          d.documentNumber.toLowerCase().includes(searchLower)
+        );
+      }
+      const insts = getMockInstruments();
+      return filtered.map(d => ({
+        ...d,
+        instruments: insts.filter(i => (d as any).instrumentIds?.includes(i.id) || (d as any).instruments?.some((inst: any) => inst.id === i.id))
+      })) as any as T;
+    }
+    if (method === 'POST') {
+      const body = JSON.parse(options.body as string) as CreateDocumentationDto;
+      const newDoc: Documentation = {
+        ...body,
+        id: `doc-${Date.now()}`,
+        description: body.description || null,
+        manufacturer: body.manufacturer || null,
+        instrumentType: body.instrumentType || null,
+        equipmentCategory: body.equipmentCategory || null,
+        tags: body.tags || [],
+        status: body.status || 'ACTIVE',
+        uploadDate: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      docs.push(newDoc);
+      saveMockDocumentation(docs);
+      
+      const audits = getMockAudits();
+      audits.unshift({
+        id: `aud-${Date.now()}`,
+        entityType: 'Documentation',
+        entityId: newDoc.id,
+        action: 'CREATE',
+        oldValue: null,
+        newValue: newDoc,
+        changedBy: userEmail,
+        timestamp: new Date().toISOString(),
+        reason: 'Document Registered'
+      });
+      saveMockAudits(audits);
+      
+      return newDoc as any as T;
+    }
+  }
+
+  if (path.startsWith('/api/documentation/')) {
+    const parts = path.split('/');
+    const id = parts[parts.length - 1];
+    const docs = getMockDocumentation();
+    const docIndex = docs.findIndex(d => d.id === id);
+    if (docIndex === -1) {
+      throw new Error('Document not found');
+    }
+    
+    if (method === 'GET') {
+      const doc = docs[docIndex];
+      const insts = getMockInstruments();
+      return {
+        ...doc,
+        instruments: insts.filter(i => (doc as any).instrumentIds?.includes(i.id) || (doc as any).instruments?.some((inst: any) => inst.id === i.id))
+      } as any as T;
+    }
+    
+    if (method === 'PUT') {
+      const body = JSON.parse(options.body as string) as UpdateDocumentationDto;
+      const oldDoc = docs[docIndex];
+      const updatedDoc: Documentation = {
+        ...oldDoc,
+        ...body,
+        description: body.description !== undefined ? body.description : oldDoc.description,
+        manufacturer: body.manufacturer !== undefined ? body.manufacturer : oldDoc.manufacturer,
+        instrumentType: body.instrumentType !== undefined ? body.instrumentType : oldDoc.instrumentType,
+        equipmentCategory: body.equipmentCategory !== undefined ? body.equipmentCategory : oldDoc.equipmentCategory,
+        tags: body.tags !== undefined ? body.tags : oldDoc.tags,
+        updatedAt: new Date().toISOString(),
+      };
+      
+      docs[docIndex] = updatedDoc;
+      saveMockDocumentation(docs);
+      
+      const audits = getMockAudits();
+      audits.unshift({
+        id: `aud-${Date.now()}`,
+        entityType: 'Documentation',
+        entityId: id,
+        action: 'UPDATE',
+        oldValue: oldDoc,
+        newValue: updatedDoc,
+        changedBy: userEmail,
+        timestamp: new Date().toISOString(),
+        reason: 'Document Metadata Updated'
+      });
+      saveMockAudits(audits);
+      
+      return updatedDoc as any as T;
+    }
+    
+    if (method === 'DELETE') {
+      const doc = docs[docIndex];
+      docs.splice(docIndex, 1);
+      saveMockDocumentation(docs);
+      
+      const audits = getMockAudits();
+      audits.unshift({
+        id: `aud-${Date.now()}`,
+        entityType: 'Documentation',
+        entityId: id,
+        action: 'DELETE',
+        oldValue: doc,
+        newValue: null,
+        changedBy: userEmail,
+        timestamp: new Date().toISOString(),
+        reason: 'Document Deleted'
+      });
+      saveMockAudits(audits);
+      
+      return { message: 'Document deleted successfully', document: doc } as any as T;
+    }
   }
 
   if (path === '/api/instruments') {
@@ -2008,6 +2300,27 @@ export const api = {
   getCalibrationBrief: (instrumentId: string) => request<TechnicianBriefing>('/api/ai/calibration-brief', {
     method: 'POST',
     body: JSON.stringify({ instrumentId }),
+  }),
+  getAllDocumentation: (filters?: { search?: string; manufacturer?: string; instrumentType?: string; status?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.manufacturer) params.append('manufacturer', filters.manufacturer);
+    if (filters?.instrumentType) params.append('instrumentType', filters.instrumentType);
+    if (filters?.status) params.append('status', filters.status);
+    const queryStr = params.toString();
+    return request<Documentation[]>(`/api/documentation${queryStr ? `?${queryStr}` : ''}`);
+  },
+  getDocumentationById: (id: string) => request<Documentation>(`/api/documentation/${id}`),
+  createDocumentation: (dto: CreateDocumentationDto) => request<Documentation>('/api/documentation', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  }),
+  updateDocumentation: (id: string, dto: UpdateDocumentationDto) => request<Documentation>(`/api/documentation/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(dto),
+  }),
+  deleteDocumentation: (id: string, reason?: string) => request<{ message: string; document: Documentation }>(`/api/documentation/${id}${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`, {
+    method: 'DELETE',
   }),
 };
 export default api;

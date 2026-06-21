@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../lib/api';
 import { Instrument, CalibrationRecord, WorkOrderPriority, ReferenceStandard, CalibrationPrepGuidance, TechnicianBriefing } from '@caltrack/types';
-import { ArrowLeft, Calendar, User, FileText, Plus, ShieldAlert, Trash2, Edit3, X, ChevronDown, ChevronRight, ClipboardList, Fingerprint, Check, Award, Sparkles, AlertTriangle, CheckSquare, ListTodo, HelpCircle, Activity, FileCheck, Cpu } from 'lucide-react';
+import { ArrowLeft, Calendar, User, FileText, Plus, ShieldAlert, Trash2, Edit3, X, ChevronDown, ChevronRight, ClipboardList, Fingerprint, Check, Award, Sparkles, AlertTriangle, CheckSquare, ListTodo, HelpCircle, Activity, FileCheck, Cpu, BookOpen } from 'lucide-react';
 import { formatDate } from '@caltrack/utils';
 
 export default function InstrumentDetails() {
@@ -835,6 +835,161 @@ export default function InstrumentDetails() {
                               ))}
                             </tbody>
                           </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Technical Documentation Section */}
+                    {briefingData.technicalDocumentation && (
+                      <div className="space-y-3 bg-[#090d16]/30 border border-gray-800/80 rounded-xl p-4.5">
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                          <BookOpen size={14} className="text-indigo-400" />
+                          Technical Documentation & Engineering Work Package
+                        </h4>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 text-xs">
+                          {/* Recommended Procedure */}
+                          <div className="p-3 bg-[#090d16]/40 border border-gray-800/60 rounded-lg flex flex-col justify-between">
+                            <div>
+                              <span className="block text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Recommended Procedure</span>
+                              {briefingData.technicalDocumentation.recommendedProcedure ? (
+                                <Link
+                                  to={`/documentation/${briefingData.technicalDocumentation.recommendedProcedure.id}`}
+                                  className="text-indigo-400 hover:text-indigo-300 font-bold block mt-1 hover:underline"
+                                  onClick={() => setIsBriefModalOpen(false)}
+                                >
+                                  {briefingData.technicalDocumentation.recommendedProcedure.title}
+                                </Link>
+                              ) : (
+                                <span className="text-gray-500 italic block mt-1 font-sans">No procedure linked</span>
+                              )}
+                            </div>
+                            {briefingData.technicalDocumentation.recommendedProcedure && (
+                              <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">
+                                {briefingData.technicalDocumentation.recommendedProcedure.documentNumber} (Rev {briefingData.technicalDocumentation.recommendedProcedure.revision})
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Manufacturer Manual */}
+                          <div className="p-3 bg-[#090d16]/40 border border-gray-800/60 rounded-lg flex flex-col justify-between">
+                            <div>
+                              <span className="block text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Manufacturer Manual</span>
+                              {briefingData.technicalDocumentation.manufacturerManual ? (
+                                <Link
+                                  to={`/documentation/${briefingData.technicalDocumentation.manufacturerManual.id}`}
+                                  className="text-indigo-400 hover:text-indigo-300 font-bold block mt-1 hover:underline"
+                                  onClick={() => setIsBriefModalOpen(false)}
+                                >
+                                  {briefingData.technicalDocumentation.manufacturerManual.title}
+                                </Link>
+                              ) : (
+                                <span className="text-gray-500 italic block mt-1 font-sans">No manual linked</span>
+                              )}
+                            </div>
+                            {briefingData.technicalDocumentation.manufacturerManual && (
+                              <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">
+                                {briefingData.technicalDocumentation.manufacturerManual.documentNumber} (Rev {briefingData.technicalDocumentation.manufacturerManual.revision})
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Installation Guide */}
+                          <div className="p-3 bg-[#090d16]/40 border border-gray-800/60 rounded-lg flex flex-col justify-between">
+                            <div>
+                              <span className="block text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Installation Guide</span>
+                              {briefingData.technicalDocumentation.installationGuide ? (
+                                <Link
+                                  to={`/documentation/${briefingData.technicalDocumentation.installationGuide.id}`}
+                                  className="text-indigo-400 hover:text-indigo-300 font-bold block mt-1 hover:underline"
+                                  onClick={() => setIsBriefModalOpen(false)}
+                                >
+                                  {briefingData.technicalDocumentation.installationGuide.title}
+                                </Link>
+                              ) : (
+                                <span className="text-gray-500 italic block mt-1 font-sans">No installation guide linked</span>
+                              )}
+                            </div>
+                            {briefingData.technicalDocumentation.installationGuide && (
+                              <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">
+                                {briefingData.technicalDocumentation.installationGuide.documentNumber} (Rev {briefingData.technicalDocumentation.installationGuide.revision})
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Safety Notes */}
+                          <div className="p-3 bg-[#090d16]/40 border border-gray-800/60 rounded-lg flex flex-col justify-between">
+                            <div>
+                              <span className="block text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Safety Notes</span>
+                              {briefingData.technicalDocumentation.safetyNotes ? (
+                                <Link
+                                  to={`/documentation/${briefingData.technicalDocumentation.safetyNotes.id}`}
+                                  className="text-indigo-400 hover:text-indigo-300 font-bold block mt-1 hover:underline"
+                                  onClick={() => setIsBriefModalOpen(false)}
+                                >
+                                  {briefingData.technicalDocumentation.safetyNotes.title}
+                                </Link>
+                              ) : (
+                                <span className="text-gray-500 italic block mt-1 font-sans">No safety notes linked</span>
+                              )}
+                            </div>
+                            {briefingData.technicalDocumentation.safetyNotes && (
+                              <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">
+                                {briefingData.technicalDocumentation.safetyNotes.documentNumber} (Rev {briefingData.technicalDocumentation.safetyNotes.revision})
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Troubleshooting Guide */}
+                          <div className="p-3 bg-[#090d16]/40 border border-gray-800/60 rounded-lg flex flex-col justify-between">
+                            <div>
+                              <span className="block text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Troubleshooting Guide</span>
+                              {briefingData.technicalDocumentation.troubleshootingGuide ? (
+                                <Link
+                                  to={`/documentation/${briefingData.technicalDocumentation.troubleshootingGuide.id}`}
+                                  className="text-indigo-400 hover:text-indigo-300 font-bold block mt-1 hover:underline"
+                                  onClick={() => setIsBriefModalOpen(false)}
+                                >
+                                  {briefingData.technicalDocumentation.troubleshootingGuide.title}
+                                </Link>
+                              ) : (
+                                <span className="text-gray-500 italic block mt-1 font-sans">No troubleshooting guide linked</span>
+                              )}
+                            </div>
+                            {briefingData.technicalDocumentation.troubleshootingGuide && (
+                              <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">
+                                {briefingData.technicalDocumentation.troubleshootingGuide.documentNumber} (Rev {briefingData.technicalDocumentation.troubleshootingGuide.revision})
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Related Drawings */}
+                          <div className="p-3 bg-[#090d16]/40 border border-gray-800/60 rounded-lg flex flex-col justify-between">
+                            <div>
+                              <span className="block text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-1">Related Drawings</span>
+                              {briefingData.technicalDocumentation.relatedDrawings && briefingData.technicalDocumentation.relatedDrawings.length > 0 ? (
+                                <div className="space-y-1.5 mt-1">
+                                  {briefingData.technicalDocumentation.relatedDrawings.map((drawing) => (
+                                    <div key={drawing.id} className="flex items-center justify-between text-[11px] font-sans">
+                                      <Link
+                                        to={`/documentation/${drawing.id}`}
+                                        className="text-indigo-400 hover:text-indigo-300 font-semibold hover:underline truncate max-w-[170px]"
+                                        onClick={() => setIsBriefModalOpen(false)}
+                                      >
+                                        {drawing.title}
+                                      </Link>
+                                      <span className="text-[9px] text-gray-500 font-mono font-semibold ml-2 shrink-0">
+                                        ({drawing.documentType})
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-gray-500 italic block mt-1 font-sans">No drawings linked</span>
+                              )}
+                            </div>
+                          </div>
+
                         </div>
                       </div>
                     )}

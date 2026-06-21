@@ -23,6 +23,7 @@ export interface Instrument {
   lastCalibrationDate?: Date | string | null;
   nextCalibrationDueDate?: Date | string | null;
   workOrders?: WorkOrder[];
+  documents?: Documentation[];
 }
 
 export interface ProcessArea {
@@ -345,6 +346,72 @@ export interface TechnicianBriefing {
     expectedOutput: number;
   }[];
   recommendations: string[];
+  technicalDocumentation?: BriefingTechnicalDocumentation;
 }
 
+export interface Documentation {
+  id: string;
+  title: string;
+  description: string | null;
+  documentNumber: string;
+  revision: string;
+  manufacturer: string | null;
+  instrumentType: string | null;
+  equipmentCategory: string | null;
+  documentType: string;
+  tags: string[];
+  uploadDate: Date | string;
+  fileLocation: string;
+  status: string;
+  instruments?: Instrument[];
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
 
+export interface CreateDocumentationDto {
+  title: string;
+  description?: string;
+  documentNumber: string;
+  revision: string;
+  manufacturer?: string;
+  instrumentType?: string;
+  equipmentCategory?: string;
+  documentType: string;
+  tags?: string[];
+  fileLocation: string;
+  status?: string;
+  instrumentIds?: string[];
+}
+
+export interface UpdateDocumentationDto {
+  title?: string;
+  description?: string;
+  documentNumber?: string;
+  revision?: string;
+  manufacturer?: string;
+  instrumentType?: string;
+  equipmentCategory?: string;
+  documentType?: string;
+  tags?: string[];
+  fileLocation?: string;
+  status?: string;
+  instrumentIds?: string[];
+}
+
+export interface BriefingDocumentationItem {
+  id: string;
+  title: string;
+  documentNumber: string;
+  revision: string;
+  fileLocation: string;
+  documentType: string;
+}
+
+export interface BriefingTechnicalDocumentation {
+  recommendedProcedure: BriefingDocumentationItem | null;
+  manufacturerManual: BriefingDocumentationItem | null;
+  installationGuide: BriefingDocumentationItem | null;
+  safetyNotes: BriefingDocumentationItem | null;
+  troubleshootingGuide: BriefingDocumentationItem | null;
+  relatedDrawings: BriefingDocumentationItem[];
+}

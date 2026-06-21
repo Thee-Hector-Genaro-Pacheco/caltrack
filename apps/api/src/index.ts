@@ -11,6 +11,8 @@ import controlLoopsRouter from './routes/control-loops';
 import workOrdersRouter from './routes/work-orders';
 import referenceStandardsRouter from './routes/reference-standards';
 import aiRouter from './routes/ai';
+import documentationRouter from './routes/documentation';
+
 
 
 dotenv.config();
@@ -39,6 +41,8 @@ app.use('/api/control-loops', requireAuth, controlLoopsRouter);
 app.use('/api/work-orders', requireAuth, workOrdersRouter);
 app.use('/api/reference-standards', requireAuth, referenceStandardsRouter);
 app.use('/api/ai', requireAuth, aiRouter);
+app.use('/api/documentation', requireAuth, documentationRouter);
+
 
 
 // Global Error Handler

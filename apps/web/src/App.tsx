@@ -14,7 +14,10 @@ import LoopDetails from './pages/loop-details';
 import WorkOrders from './pages/work-orders';
 import Approvals from './pages/approvals';
 import ReferenceStandards from './pages/reference-standards';
-import { Database, ShieldCheck, Activity, LogOut, LayoutDashboard, User, Layers, RefreshCw, ClipboardList, ClipboardCheck, Scale } from 'lucide-react';
+import DocumentationLibrary from './pages/documentation-library';
+import DocumentationUpload from './pages/documentation-upload';
+import DocumentationDetails from './pages/documentation-details';
+import { Database, ShieldCheck, Activity, LogOut, LayoutDashboard, User, Layers, RefreshCw, ClipboardList, ClipboardCheck, Scale, BookOpen } from 'lucide-react';
 
 function AppLayout({ children, userEmail, handleLogout }: { children: React.ReactNode, userEmail: string, handleLogout: () => void }) {
   const location = useLocation();
@@ -101,6 +104,17 @@ function AppLayout({ children, userEmail, handleLogout }: { children: React.Reac
             >
               <Scale size={18} />
               Reference Standards
+            </Link>
+            <Link
+              to="/documentation"
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                isLinkActive('/documentation')
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10'
+                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <BookOpen size={18} />
+              Doc Library
             </Link>
             <Link
               to="/instruments"
@@ -232,6 +246,9 @@ export default function App() {
                   <Route path="/work-orders" element={<WorkOrders />} />
                   <Route path="/approvals" element={<Approvals />} />
                   <Route path="/reference-standards" element={<ReferenceStandards />} />
+                  <Route path="/documentation" element={<DocumentationLibrary />} />
+                  <Route path="/documentation/new" element={<DocumentationUpload />} />
+                  <Route path="/documentation/:id" element={<DocumentationDetails />} />
                   <Route path="/instruments" element={<InstrumentsList />} />
                   <Route path="/instruments/new" element={<InstrumentNew />} />
                   <Route path="/instruments/:id" element={<InstrumentDetails />} />
