@@ -12,6 +12,7 @@ import workOrdersRouter from './routes/work-orders';
 import referenceStandardsRouter from './routes/reference-standards';
 import aiRouter from './routes/ai';
 import documentationRouter from './routes/documentation';
+import intelligenceRouter from './routes/intelligence';
 
 
 
@@ -42,6 +43,7 @@ app.use('/api/work-orders', requireAuth, workOrdersRouter);
 app.use('/api/reference-standards', requireAuth, referenceStandardsRouter);
 app.use('/api/ai', requireAuth, aiRouter);
 app.use('/api/documentation', requireAuth, documentationRouter);
+app.use('/api/intelligence', requireAuth, intelligenceRouter);
 
 
 

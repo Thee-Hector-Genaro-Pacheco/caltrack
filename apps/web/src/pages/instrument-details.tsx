@@ -9,7 +9,9 @@ import {
   CalibrationPrepGuidance,
   TechnicianBriefing,
   AuditEvent,
+  InstrumentIntelligenceSummary,
 } from '@caltrack/types';
+import PredictiveRiskCard from './instrument-details/PredictiveRiskCard';
 import {
   ArrowLeft,
   Plus,
@@ -88,6 +90,8 @@ export default function InstrumentDetails() {
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [availableStandards, setAvailableStandards] = useState<ReferenceStandard[]>([]);
   const [selectedStandards, setSelectedStandards] = useState<{ referenceStandardId: string; usageNotes: string }[]>([]);
+  const [intelligenceSummary, setIntelligenceSummary] = useState<InstrumentIntelligenceSummary | null>(null);
+  const [intelligenceLoading, setIntelligenceLoading] = useState(true);
 
   const [prepGuidance, setPrepGuidance] = useState<CalibrationPrepGuidance | null>(null);
   const [prepLoading, setPrepLoading] = useState(false);
@@ -201,6 +205,19 @@ export default function InstrumentDetails() {
 
   const fetchDetails = () => {
     setLoading(true);
+    
+    // Fetch intelligence summary
+    setIntelligenceLoading(true);
+    api.getInstrumentIntelligence(id!)
+      .then((intelRes) => {
+        setIntelligenceSummary(intelRes);
+        setIntelligenceLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error fetching intelligence summary:', err);
+        setIntelligenceLoading(false);
+      });
+
     api
       .getInstrument(id!)
       .then((res) => {
@@ -441,44 +458,48 @@ export default function InstrumentDetails() {
           <DeviceSpecsCard instrument={instrument} />
         </div>
 
-        <div className="glass-card p-6 rounded-xl border border-white/5 flex flex-col justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-white mb-4">Compliance Status</h3>
+        <div className="space-y-6 flex flex-col">
+          <div className="glass-card p-6 rounded-xl border border-white/5 flex flex-col justify-between flex-grow">
+            <div>
+              <h3 className="text-lg font-bold text-white mb-4">Compliance Status</h3>
 
-            <div className="flex items-center gap-3 mt-2">
-              <InstrumentStatusBadge status={instrument.status} />
+              <div className="flex items-center gap-3 mt-2">
+                <InstrumentStatusBadge status={instrument.status} />
+              </div>
+
+              <p className="text-gray-400 text-xs mt-3 leading-relaxed font-sans">
+                {instrument.status === 'ACTIVE'
+                  ? 'Operational state validated. The metrology loop registers true and accurate signals.'
+                  : instrument.status === 'CALIBRATION_DUE'
+                  ? 'Validation interval reached. Schedule routine service tasks to maintain regulatory compliance.'
+                  : instrument.status === 'OVERDUE'
+                  ? 'CRITICAL: Device has exceeded validation limits. Operation is uncertified.'
+                  : 'Instrument is offline/inactive and not being tracked for calibrations.'}
+              </p>
             </div>
 
-            <p className="text-gray-400 text-xs mt-3 leading-relaxed font-sans">
-              {instrument.status === 'ACTIVE'
-                ? 'Operational state validated. The metrology loop registers true and accurate signals.'
-                : instrument.status === 'CALIBRATION_DUE'
-                ? 'Validation interval reached. Schedule routine service tasks to maintain regulatory compliance.'
-                : instrument.status === 'OVERDUE'
-                ? 'CRITICAL: Device has exceeded validation limits. Operation is uncertified.'
-                : 'Instrument is offline/inactive and not being tracked for calibrations.'}
-            </p>
+            <div className="flex flex-col gap-2.5 pt-6 border-t border-gray-800/80 mt-6 font-sans">
+              <button
+                onClick={() => setIsCalModalOpen(true)}
+                className="btn-transition bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg text-sm flex items-center justify-center gap-2"
+                type="button"
+              >
+                <Plus size={16} />
+                Log Calibration Test
+              </button>
+
+              <button
+                onClick={handleOpenBrief}
+                className="btn-transition bg-slate-800 hover:bg-slate-700 border border-white/5 text-gray-200 font-semibold py-2.5 px-4 rounded-lg text-sm flex items-center justify-center gap-2"
+                type="button"
+              >
+                <Sparkles size={16} className="text-indigo-400" />
+                AI Calibration Assistant
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-col gap-2.5 pt-6 border-t border-gray-800/80 mt-6 font-sans">
-            <button
-              onClick={() => setIsCalModalOpen(true)}
-              className="btn-transition bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg text-sm flex items-center justify-center gap-2"
-              type="button"
-            >
-              <Plus size={16} />
-              Log Calibration Test
-            </button>
-
-            <button
-              onClick={handleOpenBrief}
-              className="btn-transition bg-slate-800 hover:bg-slate-700 border border-white/5 text-gray-200 font-semibold py-2.5 px-4 rounded-lg text-sm flex items-center justify-center gap-2"
-              type="button"
-            >
-              <Sparkles size={16} className="text-indigo-400" />
-              AI Calibration Assistant
-            </button>
-          </div>
+          <PredictiveRiskCard summary={intelligenceSummary} loading={intelligenceLoading} />
         </div>
       </div>
 

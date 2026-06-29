@@ -74,9 +74,56 @@ export function AICalibrationBriefModal({
           </div>
         ) : briefingData ? (
           <div className="space-y-6 text-sm">
+            {/* Predictive Intelligence Parameters */}
+            {briefingData.riskLevel && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-900/40 border border-gray-800 rounded-xl p-4 text-xs font-sans">
+                <div className="space-y-1">
+                  <span className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Predictive Risk Level</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                      briefingData.riskLevel === 'CRITICAL' ? 'bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse' :
+                      briefingData.riskLevel === 'HIGH' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' :
+                      briefingData.riskLevel === 'MEDIUM' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' :
+                      'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                    }`}>
+                      {briefingData.riskLevel}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Calculated Drift Trend</span>
+                  <p className="text-white font-medium mt-1">{briefingData.driftSummary || 'Stable'}</p>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Repeated Failures Warning</span>
+                  <p className={`font-medium mt-1 ${briefingData.repeatedFailureWarning ? 'text-rose-400 font-bold' : 'text-gray-400 italic'}`}>
+                    {briefingData.repeatedFailureWarning || 'None detected'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Recommended Technical Attention Items */}
+            {briefingData.recommendedTechnicianAttentionItems && briefingData.recommendedTechnicianAttentionItems.length > 0 && (
+              <div className="bg-[#1e1b4b]/40 border border-indigo-500/20 rounded-xl p-4 space-y-2">
+                <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                  <Cpu size={14} />
+                  Technician Action Focus Items
+                </h4>
+                <ul className="space-y-1.5 text-xs text-gray-300">
+                  {briefingData.recommendedTechnicianAttentionItems.map((item, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <AlertTriangle className="text-indigo-400 shrink-0 mt-0.5" size={13} />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Operational Warning & Recommendations Banner */}
             {briefingData.recommendations.length > 0 && (
-              <div className="bg-[#1e1b4b]/40 border border-indigo-500/20 rounded-xl p-4 space-y-2">
+              <div className="bg-[#090d16]/30 border border-gray-800/80 rounded-xl p-4 space-y-2">
                 <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5 font-sans">
                   <Cpu size={14} />
                   System Diagnostic & Operational Warnings

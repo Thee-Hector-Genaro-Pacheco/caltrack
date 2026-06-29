@@ -1,5 +1,5 @@
 import { isSupabaseConfigured, supabase } from './supabase';
-import { Instrument, CalibrationRecord, AuditEvent, DashboardStats, CreateInstrumentDto, UpdateInstrumentDto, CreateCalibrationRecordDto, ProcessArea, CreateProcessAreaDto, ControlLoop, CreateControlLoopDto, WorkOrder, CreateWorkOrderDto, UpdateWorkOrderDto, ReferenceStandard, CreateReferenceStandardDto, UpdateReferenceStandardDto, CalibrationPrepGuidance, TechnicianBriefing, Documentation, CreateDocumentationDto, UpdateDocumentationDto } from '@caltrack/types';
+import { Instrument, CalibrationRecord, AuditEvent, DashboardStats, CreateInstrumentDto, UpdateInstrumentDto, CreateCalibrationRecordDto, ProcessArea, CreateProcessAreaDto, ControlLoop, CreateControlLoopDto, WorkOrder, CreateWorkOrderDto, UpdateWorkOrderDto, ReferenceStandard, CreateReferenceStandardDto, UpdateReferenceStandardDto, CalibrationPrepGuidance, TechnicianBriefing, Documentation, CreateDocumentationDto, UpdateDocumentationDto, InstrumentIntelligenceSummary } from '@caltrack/types';
 
 // Mock local storage keys
 const MOCK_INSTRUMENTS_KEY = 'caltrack_mock_instruments';
@@ -2222,6 +2222,271 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
     }
   }
 
+  if (path === '/api/intelligence/instruments') {
+    const insts = getMockInstruments();
+    const cals = getMockCalibrations();
+    
+    const computeIntell = (inst: any) => {
+      const instCals = cals.filter(c => c.instrumentId === inst.id);
+      const sorted = [...instCals].sort((a, b) => new Date(b.calibrationDate).getTime() - new Date(a.calibrationDate).getTime());
+      
+      const total = sorted.length;
+      const failed = sorted.filter(c => !c.passFail).length;
+      const rate = total > 0 ? (total - failed) / total : 1.0;
+      
+      const last = sorted[0] || null;
+      const lastDate = last ? last.calibrationDate : null;
+      const lastCalibrationStatus = last ? last.status : null;
+      const lastCalibrationPass = last ? last.passFail : null;
+      
+      const allPoints = sorted.flatMap(c => c.testPoints || []);
+      let worst = 0;
+      let avgAbsAsLeft = 0;
+      
+      if (allPoints.length > 0) {
+        worst = Math.max(...allPoints.map(tp => Math.max(Math.abs(tp.asFoundError || 0), Math.abs(tp.asLeftError || 0))));
+        const sumAbs = allPoints.reduce((sum, tp) => sum + Math.abs(tp.asLeftError || 0), 0);
+        avgAbsAsLeft = sumAbs / allPoints.length;
+      }
+      
+      let repeated = 0;
+      for (const cal of sorted) {
+        if (!cal.passFail) {
+          repeated++;
+        } else {
+          break;
+        }
+      }
+      
+      let drift: 'UPWARD' | 'DOWNWARD' | 'STABLE' | 'NONE' = 'NONE';
+      let avgDriftVal = 0;
+      if (sorted.length >= 2) {
+        const cal0 = sorted[0];
+        const cal1 = sorted[1];
+        const pts0 = cal0.testPoints || [];
+        const pts1 = cal1.testPoints || [];
+        const N = Math.min(pts0.length, pts1.length);
+        if (N > 0) {
+          let totalDiff = 0;
+          for (let i = 0; i < N; i++) {
+            totalDiff += ((pts0[i].asFoundError || 0) - (pts1[i].asLeftError || 0));
+          }
+          avgDriftVal = totalDiff / N;
+          if (avgDriftVal > 0.05) {
+            drift = 'UPWARD';
+          } else if (avgDriftVal < -0.05) {
+            drift = 'DOWNWARD';
+          } else {
+            drift = 'STABLE';
+          }
+        }
+      }
+      
+      let risk: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'LOW';
+      const isOverdue = inst.status === 'OVERDUE';
+      const isDueSoon = inst.status === 'CALIBRATION_DUE';
+      const lastFailed = last && !last.passFail;
+      
+      if (isOverdue && lastFailed) {
+        risk = 'CRITICAL';
+      } else if (repeated >= 2 || (last && worst > inst.maxPermissibleError * 1.5)) {
+        risk = 'HIGH';
+      } else if (isDueSoon || isOverdue || drift === 'UPWARD' || drift === 'DOWNWARD') {
+        risk = 'MEDIUM';
+      } else {
+        risk = 'LOW';
+      }
+      
+      const attention: string[] = [];
+      if (risk === 'CRITICAL') {
+        attention.push('CRITICAL: Device is overdue and its last calibration failed. Immediate recalibration required.');
+      }
+      if (repeated >= 2) {
+        attention.push(`HIGH RISK: ${repeated} consecutive calibration failures detected. Investigate potential hardware malfunction.`);
+      }
+      if (last && worst > inst.maxPermissibleError * 1.5) {
+        attention.push(`HIGH RISK: Maximum error of ${worst.toFixed(2)}% exceeds MPE limits by 1.5x. Assess process safety impact.`);
+      }
+      if (isOverdue && !lastFailed) {
+        attention.push('Device is overdue for periodic validation check. Schedule maintenance task.');
+      }
+      if (isDueSoon) {
+        attention.push('Device is approaching calibration deadline. Prepare validation standards.');
+      }
+      if (drift === 'UPWARD') {
+        attention.push(`Drift trend: UPWARD (avg drift: +${avgDriftVal.toFixed(2)}% of span). Monitor closely on next inspection.`);
+      }
+      if (drift === 'DOWNWARD') {
+        attention.push(`Drift trend: DOWNWARD (avg drift: ${avgDriftVal.toFixed(2)}% of span). Monitor closely on next inspection.`);
+      }
+      if (total === 0) {
+        attention.push('Baseline calibration required. No historical data exists.');
+      }
+      if (attention.length === 0) {
+        attention.push('Normal operation. Device is performing within expected tolerance limits.');
+      }
+      
+      return {
+        instrumentId: inst.id,
+        tagNumber: inst.tagNumber,
+        instrumentType: inst.instrumentType,
+        manufacturer: inst.manufacturer,
+        model: inst.model,
+        location: inst.location,
+        status: inst.status,
+        totalCalibrations: total,
+        failedCalibrations: failed,
+        passRate: rate,
+        lastCalibrationDate: lastDate,
+        lastCalibrationStatus,
+        lastCalibrationPass,
+        avgAbsoluteAsLeftError: avgAbsAsLeft,
+        worstTestPointError: worst,
+        repeatedFailures: repeated,
+        driftDirection: drift,
+        riskLevel: risk,
+        recommendedAttentionItems: attention,
+      };
+    };
+    
+    return insts.map(computeIntell) as any as T;
+  }
+  
+  if (path.startsWith('/api/intelligence/instruments/')) {
+    const parts = path.split('/');
+    const id = parts[parts.length - 1];
+    const insts = getMockInstruments();
+    const inst = insts.find(i => i.id === id);
+    if (!inst) throw new Error('Instrument not found');
+    
+    const cals = getMockCalibrations();
+    
+    const computeIntell = (i: any) => {
+      const instCals = cals.filter(c => c.instrumentId === i.id);
+      const sorted = [...instCals].sort((a, b) => new Date(b.calibrationDate).getTime() - new Date(a.calibrationDate).getTime());
+      
+      const total = sorted.length;
+      const failed = sorted.filter(c => !c.passFail).length;
+      const rate = total > 0 ? (total - failed) / total : 1.0;
+      
+      const last = sorted[0] || null;
+      const lastDate = last ? last.calibrationDate : null;
+      const lastCalibrationStatus = last ? last.status : null;
+      const lastCalibrationPass = last ? last.passFail : null;
+      
+      const allPoints = sorted.flatMap(c => c.testPoints || []);
+      let worst = 0;
+      let avgAbsAsLeft = 0;
+      
+      if (allPoints.length > 0) {
+        worst = Math.max(...allPoints.map(tp => Math.max(Math.abs(tp.asFoundError || 0), Math.abs(tp.asLeftError || 0))));
+        const sumAbs = allPoints.reduce((sum, tp) => sum + Math.abs(tp.asLeftError || 0), 0);
+        avgAbsAsLeft = sumAbs / allPoints.length;
+      }
+      
+      let repeated = 0;
+      for (const cal of sorted) {
+        if (!cal.passFail) {
+          repeated++;
+        } else {
+          break;
+        }
+      }
+      
+      let drift: 'UPWARD' | 'DOWNWARD' | 'STABLE' | 'NONE' = 'NONE';
+      let avgDriftVal = 0;
+      if (sorted.length >= 2) {
+        const cal0 = sorted[0];
+        const cal1 = sorted[1];
+        const pts0 = cal0.testPoints || [];
+        const pts1 = cal1.testPoints || [];
+        const N = Math.min(pts0.length, pts1.length);
+        if (N > 0) {
+          let totalDiff = 0;
+          for (let i = 0; i < N; i++) {
+            totalDiff += ((pts0[i].asFoundError || 0) - (pts1[i].asLeftError || 0));
+          }
+          avgDriftVal = totalDiff / N;
+          if (avgDriftVal > 0.05) {
+            drift = 'UPWARD';
+          } else if (avgDriftVal < -0.05) {
+            drift = 'DOWNWARD';
+          } else {
+            drift = 'STABLE';
+          }
+        }
+      }
+      
+      let risk: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'LOW';
+      const isOverdue = i.status === 'OVERDUE';
+      const isDueSoon = i.status === 'CALIBRATION_DUE';
+      const lastFailed = last && !last.passFail;
+      
+      if (isOverdue && lastFailed) {
+        risk = 'CRITICAL';
+      } else if (repeated >= 2 || (last && worst > i.maxPermissibleError * 1.5)) {
+        risk = 'HIGH';
+      } else if (isDueSoon || isOverdue || drift === 'UPWARD' || drift === 'DOWNWARD') {
+        risk = 'MEDIUM';
+      } else {
+        risk = 'LOW';
+      }
+      
+      const attention: string[] = [];
+      if (risk === 'CRITICAL') {
+        attention.push('CRITICAL: Device is overdue and its last calibration failed. Immediate recalibration required.');
+      }
+      if (repeated >= 2) {
+        attention.push(`HIGH RISK: ${repeated} consecutive calibration failures detected. Investigate potential hardware malfunction.`);
+      }
+      if (last && worst > i.maxPermissibleError * 1.5) {
+        attention.push(`HIGH RISK: Maximum error of ${worst.toFixed(2)}% exceeds MPE limits by 1.5x. Assess process safety impact.`);
+      }
+      if (isOverdue && !lastFailed) {
+        attention.push('Device is overdue for periodic validation check. Schedule maintenance task.');
+      }
+      if (isDueSoon) {
+        attention.push('Device is approaching calibration deadline. Prepare validation standards.');
+      }
+      if (drift === 'UPWARD') {
+        attention.push(`Drift trend: UPWARD (avg drift: +${avgDriftVal.toFixed(2)}% of span). Monitor closely on next inspection.`);
+      }
+      if (drift === 'DOWNWARD') {
+        attention.push(`Drift trend: DOWNWARD (avg drift: ${avgDriftVal.toFixed(2)}% of span). Monitor closely on next inspection.`);
+      }
+      if (total === 0) {
+        attention.push('Baseline calibration required. No historical data exists.');
+      }
+      if (attention.length === 0) {
+        attention.push('Normal operation. Device is performing within expected tolerance limits.');
+      }
+      
+      return {
+        instrumentId: i.id,
+        tagNumber: i.tagNumber,
+        instrumentType: i.instrumentType,
+        manufacturer: i.manufacturer,
+        model: i.model,
+        location: i.location,
+        status: i.status,
+        totalCalibrations: total,
+        failedCalibrations: failed,
+        passRate: rate,
+        lastCalibrationDate: lastDate,
+        lastCalibrationStatus,
+        lastCalibrationPass,
+        avgAbsoluteAsLeftError: avgAbsAsLeft,
+        worstTestPointError: worst,
+        repeatedFailures: repeated,
+        driftDirection: drift,
+        riskLevel: risk,
+        recommendedAttentionItems: attention,
+      };
+    };
+    
+    return computeIntell(inst) as any as T;
+  }
+
   throw new Error(`Endpoint path ${path} not mock simulated.`);
 }
 
@@ -2322,5 +2587,7 @@ export const api = {
   deleteDocumentation: (id: string, reason?: string) => request<{ message: string; document: Documentation }>(`/api/documentation/${id}${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`, {
     method: 'DELETE',
   }),
+  getInstrumentsIntelligence: () => request<InstrumentIntelligenceSummary[]>('/api/intelligence/instruments'),
+  getInstrumentIntelligence: (id: string) => request<InstrumentIntelligenceSummary>(`/api/intelligence/instruments/${id}`),
 };
 export default api;

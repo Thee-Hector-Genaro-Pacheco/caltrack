@@ -347,6 +347,10 @@ export interface TechnicianBriefing {
   }[];
   recommendations: string[];
   technicalDocumentation?: BriefingTechnicalDocumentation;
+  riskLevel?: CalibrationRiskLevel;
+  driftSummary?: string;
+  repeatedFailureWarning?: string | null;
+  recommendedTechnicianAttentionItems?: string[];
 }
 
 export interface Documentation {
@@ -414,4 +418,28 @@ export interface BriefingTechnicalDocumentation {
   safetyNotes: BriefingDocumentationItem | null;
   troubleshootingGuide: BriefingDocumentationItem | null;
   relatedDrawings: BriefingDocumentationItem[];
+}
+
+export type CalibrationRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+export interface InstrumentIntelligenceSummary {
+  instrumentId: string;
+  tagNumber: string;
+  instrumentType: string;
+  manufacturer: string;
+  model: string;
+  location: string;
+  status: string;
+  totalCalibrations: number;
+  failedCalibrations: number;
+  passRate: number;
+  lastCalibrationDate: Date | string | null;
+  lastCalibrationStatus: string | null;
+  lastCalibrationPass: boolean | null;
+  avgAbsoluteAsLeftError: number;
+  worstTestPointError: number;
+  repeatedFailures: number;
+  driftDirection: 'UPWARD' | 'DOWNWARD' | 'STABLE' | 'NONE';
+  riskLevel: CalibrationRiskLevel;
+  recommendedAttentionItems: string[];
 }

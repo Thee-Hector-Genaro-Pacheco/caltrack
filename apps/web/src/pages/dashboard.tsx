@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
-import { DashboardStats } from '@caltrack/types';
-import { Activity, AlertTriangle, Database, Layers, RefreshCw, ClipboardList, Fingerprint, CheckCircle2, XCircle, Scale, Award } from 'lucide-react';
+import { DashboardStats, InstrumentIntelligenceSummary } from '@caltrack/types';
+import { Activity, AlertTriangle, Database, Layers, RefreshCw, ClipboardList, Fingerprint, CheckCircle2, XCircle, Scale, Award, BrainCircuit } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDate } from '@caltrack/utils';
 
@@ -9,6 +9,8 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [intelligenceList, setIntelligenceList] = useState<InstrumentIntelligenceSummary[]>([]);
+  const [intelligenceLoading, setIntelligenceLoading] = useState(true);
 
   useEffect(() => {
     api.getDashboardStats()
@@ -21,7 +23,49 @@ export default function Dashboard() {
         setError('Failed to load dashboard statistics');
         setLoading(false);
       });
+
+    api.getInstrumentsIntelligence()
+      .then(res => {
+        setIntelligenceList(res);
+        setIntelligenceLoading(false);
+      })
+      .catch(err => {
+        console.error('Error fetching intelligence:', err);
+        setIntelligenceLoading(false);
+      });
   }, []);
+
+  const getRiskBadgeClass = (level: string) => {
+    switch (level) {
+      case 'CRITICAL':
+        return 'bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse';
+      case 'HIGH':
+        return 'bg-rose-500/15 text-rose-400 border border-rose-500/30';
+      case 'MEDIUM':
+        return 'bg-amber-500/15 text-amber-400 border border-amber-500/30';
+      case 'LOW':
+      default:
+        return 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+    }
+  };
+
+  const getDriftText = (drift: string) => {
+    switch (drift) {
+      case 'UPWARD':
+        return <span className="text-rose-400 font-semibold">↑ UPWARD</span>;
+      case 'DOWNWARD':
+        return <span className="text-blue-400 font-semibold">↓ DOWNWARD</span>;
+      case 'STABLE':
+        return <span className="text-emerald-400">STABLE</span>;
+      case 'NONE':
+      default:
+        return <span className="text-gray-500 font-sans italic">NONE</span>;
+    }
+  };
+
+  const highRiskInstruments = intelligenceList.filter(
+    (inst) => inst.riskLevel === 'CRITICAL' || inst.riskLevel === 'HIGH' || inst.riskLevel === 'MEDIUM'
+  );
 
   if (loading) {
     return (
@@ -319,6 +363,84 @@ export default function Dashboard() {
             </Link>
           </div>
         </div>
+      </div>
+
+
+      
+      {/* PREDICTIVE RISK ALERTING CARD */}
+      <div className="glass-card p-6 rounded-xl border border-white/5">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <BrainCircuit className="text-indigo-400" size={20} />
+              Predictive Risk & Drift Telemetry
+            </h3>
+            <p className="text-xs text-gray-400 mt-1">Surfacing high-risk calibration gaps and trend vectors before failure occurs.</p>
+          </div>
+          <span className="px-2.5 py-0.5 rounded text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/25 font-bold uppercase tracking-wider">
+            AI ML-Assisted
+          </span>
+        </div>
+
+        {intelligenceLoading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-indigo-500 mx-auto"></div>
+            <p className="text-gray-500 text-xs mt-2">Running risk analysis calculations...</p>
+          </div>
+        ) : highRiskInstruments.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 text-sm border border-dashed border-gray-800 rounded-lg">
+            No active validation risk alarms or high drift deviations registered in the facility.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-800 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  <th className="py-3 px-4">Tag Number</th>
+                  <th className="py-3 px-4">Instrument Type</th>
+                  <th className="py-3 px-4">Risk Level</th>
+                  <th className="py-3 px-4">Pass Rate</th>
+                  <th className="py-3 px-4">Drift Trend</th>
+                  <th className="py-3 px-4">Action Item</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-800/50 text-sm text-gray-300">
+                {highRiskInstruments.map((inst) => (
+                  <tr key={inst.instrumentId} className="hover:bg-white/5 transition-colors">
+                    <td className="py-3.5 px-4 font-mono font-semibold">
+                      <Link to={`/instruments/${inst.instrumentId}`} className="text-indigo-400 hover:underline">
+                        {inst.tagNumber}
+                      </Link>
+                    </td>
+                    <td className="py-3.5 px-4 text-xs font-sans text-gray-300">
+                      {inst.instrumentType}
+                      <span className="block text-[10px] text-gray-500 mt-0.5">{inst.location}</span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider ${getRiskBadgeClass(inst.riskLevel)}`}>
+                        {inst.riskLevel}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono">
+                      <span className={inst.passRate < 0.8 ? 'text-rose-400' : 'text-emerald-400'}>
+                        {Math.round(inst.passRate * 100)}%
+                      </span>
+                      <span className="text-[10px] text-gray-500 block">
+                        {inst.totalCalibrations - inst.failedCalibrations}/{inst.totalCalibrations} passed
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-xs">
+                      {getDriftText(inst.driftDirection)}
+                    </td>
+                    <td className="py-3.5 px-4 text-xs max-w-sm truncate text-gray-400">
+                      {inst.recommendedAttentionItems[0] || 'No suggestions'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="glass-card p-6 rounded-xl border border-white/5">

@@ -114,16 +114,16 @@ export class SupervisorAgent implements Agent {
       };
 
       // 5. Build History Metrics
+      const sortedHistory = [...calibrationHistory].sort(
+        (a: any, b: any) =>
+          new Date(b.calibrationDate).getTime() - new Date(a.calibrationDate).getTime()
+      );
+
       let lastCalibrationDate = "Never Calibrated";
       let passFail = "N/A";
       let previousTechnician = "N/A";
 
-      if (calibrationHistory.length > 0) {
-        // Sort history by date descending
-        const sortedHistory = [...calibrationHistory].sort(
-          (a: any, b: any) =>
-            new Date(b.calibrationDate).getTime() - new Date(a.calibrationDate).getTime()
-        );
+      if (sortedHistory.length > 0) {
         const lastRecord = sortedHistory[0];
         lastCalibrationDate = new Date(lastRecord.calibrationDate).toLocaleDateString();
         passFail = lastRecord.passFail ? "PASS" : "FAIL";
@@ -220,6 +220,102 @@ export class SupervisorAgent implements Agent {
         ? `${instrument.controlLoop.loopTag} (${instrument.controlLoop.loopNumber})`
         : "N/A";
 
+      // 7b. Calculate Predictive Intelligence metrics for AI Briefing
+      const totalCalibrations = sortedHistory.length;
+      
+      // Consecutive failed calibrations starting from most recent
+      let repeatedFailures = 0;
+      for (const cal of sortedHistory) {
+        if (!cal.passFail) {
+          repeatedFailures++;
+        } else {
+          break;
+        }
+      }
+
+      // Gathering all test points
+      const allTestPoints = sortedHistory.flatMap((c: any) => c.testPoints || []);
+      let worstTestPointError = 0;
+      if (allTestPoints.length > 0) {
+        worstTestPointError = Math.max(
+          ...allTestPoints.map((tp: any) =>
+            Math.max(Math.abs(tp.asFoundError || 0), Math.abs(tp.asLeftError || 0))
+          )
+        );
+      }
+
+      // Drift calculation
+      let driftDirection: 'UPWARD' | 'DOWNWARD' | 'STABLE' | 'NONE' = 'NONE';
+      let avgDrift = 0;
+      if (sortedHistory.length >= 2) {
+        const cal0 = sortedHistory[0];
+        const cal1 = sortedHistory[1];
+        const pts0 = cal0.testPoints || [];
+        const pts1 = cal1.testPoints || [];
+        const N = Math.min(pts0.length, pts1.length);
+        if (N > 0) {
+          let totalDiff = 0;
+          for (let i = 0; i < N; i++) {
+            totalDiff += ((pts0[i].asFoundError || 0) - (pts1[i].asLeftError || 0));
+          }
+          avgDrift = totalDiff / N;
+          if (avgDrift > 0.05) {
+            driftDirection = 'UPWARD';
+          } else if (avgDrift < -0.05) {
+            driftDirection = 'DOWNWARD';
+          } else {
+            driftDirection = 'STABLE';
+          }
+        }
+      }
+
+      // Deterministic risk scoring
+      let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'LOW';
+      const isOverdue = instrument.status === 'OVERDUE';
+      const isDueSoon = instrument.status === 'CALIBRATION_DUE';
+      const lastRecordFailed = sortedHistory[0] && !sortedHistory[0].passFail;
+
+      if (isOverdue && lastRecordFailed) {
+        riskLevel = 'CRITICAL';
+      } else if (repeatedFailures >= 2 || (sortedHistory[0] && worstTestPointError > instrument.maxPermissibleError * 1.5)) {
+        riskLevel = 'HIGH';
+      } else if (isDueSoon || isOverdue || driftDirection === 'UPWARD' || driftDirection === 'DOWNWARD') {
+        riskLevel = 'MEDIUM';
+      } else {
+        riskLevel = 'LOW';
+      }
+
+      const driftSummary = driftDirection === 'NONE'
+        ? 'No historical test point data exists to compute drift.'
+        : `Drift trend is classified as ${driftDirection} (average absolute offset: ${Math.abs(avgDrift).toFixed(2)}% of span).`;
+
+      const repeatedFailureWarning = repeatedFailures >= 2
+        ? `Warning: ${repeatedFailures} consecutive failed calibrations detected on this tag.`
+        : null;
+
+      const attentionItems: string[] = [];
+      if (riskLevel === 'CRITICAL') {
+        attentionItems.push('CRITICAL: Device past validation deadline and has failed recent checks. Inspect for mechanical failure.');
+      }
+      if (repeatedFailures >= 2) {
+        attentionItems.push(`Investigate repeated failures (${repeatedFailures} consecutive). Check process compatibility.`);
+      }
+      if (sortedHistory[0] && worstTestPointError > instrument.maxPermissibleError * 1.5) {
+        attentionItems.push(`Review severe error (${worstTestPointError.toFixed(2)}% observed) against ±${instrument.maxPermissibleError}% MPE spec.`);
+      }
+      if (isOverdue && !lastRecordFailed) {
+        attentionItems.push('Schedule routine calibration check immediately.');
+      }
+      if (isDueSoon) {
+        attentionItems.push('Calibration due soon. Schedule validation window.');
+      }
+      if (driftDirection === 'UPWARD' || driftDirection === 'DOWNWARD') {
+        attentionItems.push(`Monitor drift trend (${driftDirection}). Adjust calibration trim if deviation persists.`);
+      }
+      if (attentionItems.length === 0) {
+        attentionItems.push('Perform standard calibration checks according to procedural checklist.');
+      }
+
       const briefing = {
         instrumentInfo: {
           tagNumber: instrument.tagNumber,
@@ -243,6 +339,10 @@ export class SupervisorAgent implements Agent {
         testPoints, // Include testPoints for the modal targets rendering
         recommendations: Array.from(new Set(recommendations)), // Deduplicate
         technicalDocumentation,
+        riskLevel,
+        driftSummary,
+        repeatedFailureWarning,
+        recommendedTechnicianAttentionItems: attentionItems,
       };
 
       return {
