@@ -1,3 +1,4 @@
+# AWS S3 static build artifact generator configuration
 # Stage 1: Build the assets
 FROM node:20-alpine AS builder
 

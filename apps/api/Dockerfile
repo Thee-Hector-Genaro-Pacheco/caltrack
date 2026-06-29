@@ -1,3 +1,4 @@
+# AWS ECS Fargate compatible multi-stage build configuration
 # Stage 1: Build the workspace
 FROM node:20-alpine AS builder
 

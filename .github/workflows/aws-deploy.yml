@@ -1,0 +1,111 @@
+name: AWS Production Deployment CD
+
+on:
+  push:
+    branches:
+      - release/prod # Trigger only on production release branch pushes
+
+jobs:
+  deploy-aws:
+    name: Deploy API & React Web to AWS Cloud
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository Source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      # ----------------------------------------------------
+      # TODO: AWS OIDC / Role authentication setup
+      # Configure safe OAuth logins without long-lived keys.
+      # Step template:
+      # - name: Configure AWS Credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     role-to-assume: arn:aws:iam::ACCOUNT_ID:role/GitHubActionsDeployRole
+      #     aws-region: us-east-1
+      # ----------------------------------------------------
+      - name: Mock AWS Credentials Configuration
+        run: |
+          echo "TODO: Configure AWS IAM Role via OIDC (aws-actions/configure-aws-credentials)"
+          echo "AWS_REGION=us-east-1" >> $GITHUB_ENV
+
+      # ----------------------------------------------------
+      # TODO: ECR login
+      # Login to private container registry to store API image.
+      # Step template:
+      # - name: Login to Amazon ECR
+      #   id: login-ecr
+      #   uses: aws-actions/amazon-ecr-login@v2
+      # ----------------------------------------------------
+      - name: Mock Amazon ECR Login
+        run: |
+          echo "TODO: Login to Amazon ECR (aws-actions/amazon-ecr-login)"
+          echo "ECR_REGISTRY=123456789012.dkr.ecr.us-east-1.amazonaws.com" >> $GITHUB_ENV
+
+      # ----------------------------------------------------
+      # TODO: Docker Build & Push API
+      # Build monorepo backend and push it to ECR.
+      # Step template:
+      # - name: Build, tag, and push image to Amazon ECR
+      #   env:
+      #     ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      #     ECR_REPOSITORY: caltrack-api
+      #     IMAGE_TAG: ${{ github.sha }}
+      #   run: |
+      #     docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f apps/api/Dockerfile .
+      #     docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+      #     docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+      # ----------------------------------------------------
+      - name: Mock Docker API Image Build & Push
+        run: |
+          echo "TODO: Build & Push API container image to Amazon ECR"
+
+      # ----------------------------------------------------
+      # TODO: ECS Service Update
+      # Update Fargate task definition with new image tag.
+      # Step template:
+      # - name: Fill in the new image ID in the Amazon ECS task definition
+      #   id: task-def
+      #   uses: aws-actions/amazon-ecs-render-task-definition@v1
+      #   with:
+      #     task-definition: task-definition.json
+      #     container-name: api
+      #     image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/caltrack-api:${{ github.sha }}
+      #
+      # - name: Deploy Amazon ECS task definition
+      #   uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+      #   with:
+      #     task-definition: ${{ steps.task-def.outputs.task-definition }}
+      #     service: caltrack-api-service
+      #     cluster: caltrack-prod-cluster
+      #     wait-for-service-stability: true
+      # ----------------------------------------------------
+      - name: Mock ECS Fargate Service Redeploy
+        run: |
+          echo "TODO: Update ECS Fargate Service task definition and trigger rolling deploy"
+
+      # ----------------------------------------------------
+      # TODO: Frontend S3 static assets upload
+      # Compile React assets and copy them to S3 bucket.
+      # Step template:
+      # - name: Build React Assets
+      #   run: |
+      #     npm ci
+      #     npm run build --workspace=@caltrack/web
+      # - name: Deploy Frontend Assets to Amazon S3
+      #   run: |
+      #     aws s3 sync apps/web/dist/ s3://caltrack-prod-assets/ --delete
+      # - name: Invalidate CloudFront Distribution Cache
+      #   run: |
+      #     aws cloudfront create-invalidation --distribution-id E1234567890ABC --paths "/*"
+      # ----------------------------------------------------
+      - name: Mock Frontend Build & S3 Upload
+        run: |
+          echo "TODO: Compile React frontend and sync assets to S3 bucket"
+          echo "TODO: Invalidate CloudFront Distribution Cache"

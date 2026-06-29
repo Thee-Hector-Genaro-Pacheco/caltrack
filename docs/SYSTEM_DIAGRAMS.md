@@ -143,3 +143,57 @@ flowchart TD
     StandardData --> Briefing
     DocumentationData --> Briefing
 ```
+
+---
+
+# AWS Cloud Deployment Architecture
+
+```mermaid
+graph TD
+    subgraph Client ["Client Browser / Mobile App"]
+        C[User App]
+    end
+
+    subgraph AWS ["Amazon Web Services (AWS)"]
+        subgraph Edge ["Edge Network"]
+            CF[Amazon CloudFront CDN]
+            S3[Amazon S3 Bucket: Static Assets]
+        end
+
+        subgraph VPC ["Virtual Private Cloud (VPC)"]
+            subgraph PublicSubnets ["Public Subnets"]
+                ALB[Application Load Balancer]
+            end
+
+            subgraph PrivateSubnets ["Private Subnets"]
+                ECS[Amazon ECS Fargate: Express API Service]
+            end
+
+            subgraph DatabaseSubnets ["Isolated Database Subnets"]
+                RDS[(Amazon RDS: PostgreSQL Database)]
+            end
+        end
+
+        SM[AWS Secrets Manager]
+    end
+
+    subgraph External ["Deployment Pipeline"]
+        GHA[GitHub Actions CD workflow]
+        ECR[Amazon ECR: Docker Container Registry]
+    end
+
+    %% Client Interactions
+    C -->|1. Request Static Web Pages| CF
+    CF -->|2. Cache Miss / Fetch| S3
+    C -->|3. REST API Requests /api/*| ALB
+    ALB -->|4. Forward Request| ECS
+
+    %% ECS Interactions
+    ECS -->|5. Connect DB| RDS
+    ECS -->|6. Retrieve Secrets| SM
+
+    %% Deployment Pipeline
+    GHA -->|A. Push Image| ECR
+    GHA -->|B. Deploy Static Build| S3
+    ECR -->|C. Pull Image| ECS
+```
