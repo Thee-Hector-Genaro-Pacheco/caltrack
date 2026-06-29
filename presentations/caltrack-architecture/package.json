@@ -1,0 +1,19 @@
+{
+  "name": "caltrack-architecture",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "slidev build",
+    "dev": "slidev --open",
+    "export": "slidev export"
+  },
+  "dependencies": {
+    "@slidev/theme-default": "latest",
+    "@slidev/theme-seriph": "latest",
+    "mermaid": "^11.16.0",
+    "vue": "^3.5.33"
+  },
+  "devDependencies": {
+    "@slidev/cli": "^52.16.0"
+  }
+}
