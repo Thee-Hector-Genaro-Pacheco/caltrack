@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import { Instrument, CalibrationRecord } from '@caltrack/types';
+import { CalibrationStatusBadge } from '../../components/ui/Badge';
 import { formatDate } from '@caltrack/utils';
 import {
   ChevronDown,
@@ -20,7 +21,6 @@ export interface CalibrationHistoryCardProps {
   onOpenSubmitReview: (cal: CalibrationRecord) => void;
   onOpenApproveReview: (cal: CalibrationRecord) => void;
   onOpenRejectReview: (cal: CalibrationRecord) => void;
-  getStatusBadge: (status: string) => React.ReactNode;
 }
 
 export function CalibrationHistoryCard({
@@ -30,7 +30,6 @@ export function CalibrationHistoryCard({
   onOpenSubmitReview,
   onOpenApproveReview,
   onOpenRejectReview,
-  getStatusBadge,
 }: CalibrationHistoryCardProps) {
   return (
     <div className="glass-card p-6 rounded-xl border border-white/5">
@@ -112,7 +111,9 @@ export function CalibrationHistoryCard({
                           {cal.passFail ? 'PASS' : 'FAIL'}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4">{getStatusBadge(cal.status)}</td>
+                      <td className="py-3.5 px-4">
+                        <CalibrationStatusBadge status={cal.status} />
+                      </td>
                       <td className="py-3.5 px-4 text-xs text-gray-400 max-w-xs truncate" title={cal.notes || ''}>
                         <span className="flex items-center gap-1">
                           <FileText size={14} className="text-gray-600 shrink-0" />

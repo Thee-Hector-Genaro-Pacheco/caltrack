@@ -4,6 +4,10 @@ import { CalibrationRecord, SignerRole } from '@caltrack/types';
 import { Search, AlertCircle, RefreshCw, Check, X, Eye, Info, Calendar, User, CheckCircle2, XCircle, FileText, Fingerprint } from 'lucide-react';
 import { formatDate } from '@caltrack/utils';
 import { Link } from 'react-router-dom';
+import { CalibrationStatusBadge } from '../components/ui/Badge';
+import Modal from '../components/ui/Modal';
+import Spinner from '../components/ui/Spinner';
+import Card from '../components/ui/Card';
 
 export default function Approvals() {
   const [activeTab, setActiveTab] = useState<'PENDING_REVIEW' | 'APPROVED' | 'REJECTED'>('PENDING_REVIEW');
@@ -137,20 +141,7 @@ export default function Approvals() {
            tech.toLowerCase().includes(search.toLowerCase());
   });
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'DRAFT':
-        return <span className="px-2 py-1 text-xs font-semibold rounded-md bg-slate-500/15 text-slate-400 border border-slate-500/30">DRAFT</span>;
-      case 'PENDING_REVIEW':
-        return <span className="px-2 py-1 text-xs font-semibold rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30">PENDING REVIEW</span>;
-      case 'APPROVED':
-        return <span className="px-2 py-1 text-xs font-semibold rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">APPROVED</span>;
-      case 'REJECTED':
-        return <span className="px-2 py-1 text-xs font-semibold rounded-md bg-rose-500/15 text-rose-400 border border-rose-500/30">REJECTED</span>;
-      default:
-        return <span className="px-2 py-1 text-xs font-semibold rounded-md bg-slate-500/15 text-slate-400 border border-slate-500/30">{status}</span>;
-    }
-  };
+  // Centralized to CalibrationStatusBadge
 
   return (
     <div className="space-y-6 relative">
@@ -222,10 +213,10 @@ export default function Approvals() {
       </div>
 
       {/* Main content grid */}
-      <div className="bg-[#0c1220]/60 backdrop-blur-md border border-gray-800 rounded-xl overflow-hidden shadow-2xl">
+      <Card variant="card" className="overflow-hidden bg-[#0c1220]/60 backdrop-blur-md border border-gray-800 rounded-xl shadow-2xl p-0">
         {loading ? (
           <div className="p-16 text-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-indigo-500 mx-auto"></div>
+            <Spinner size="md" />
             <p className="text-gray-500 text-xs mt-3">Loading compliance records...</p>
           </div>
         ) : error ? (
@@ -291,7 +282,7 @@ export default function Approvals() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(cal.status)}
+                      <CalibrationStatusBadge status={cal.status} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-xs">
                       <div className="flex items-center justify-end gap-2">
@@ -330,12 +321,16 @@ export default function Approvals() {
             </table>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* DETAILS MODAL */}
       {isDetailsOpen && selectedCal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#0c1220] border border-gray-800 w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+        <Modal
+          isOpen={isDetailsOpen}
+          onClose={() => setIsDetailsOpen(false)}
+          size="4xl"
+          className="max-h-[90vh] flex flex-col overflow-hidden !p-0"
+        >
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-gray-800/80 flex justify-between items-center bg-[#080d16]">
               <div>
@@ -379,7 +374,9 @@ export default function Approvals() {
                 </div>
                 <div>
                   <span className="block text-[10px] font-semibold text-gray-500 uppercase">Workflow State</span>
-                  <span className="block mt-0.5">{getStatusBadge(selectedCal.status)}</span>
+                  <span className="block mt-0.5">
+                    <CalibrationStatusBadge status={selectedCal.status} />
+                  </span>
                 </div>
               </div>
 
@@ -550,14 +547,17 @@ export default function Approvals() {
                 Close Record
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* APPROVE MODAL */}
       {isApproveOpen && selectedCal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#0c1220] border border-gray-800 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+        <Modal
+          isOpen={isApproveOpen}
+          onClose={() => setIsApproveOpen(false)}
+          size="md"
+          className="!p-0 overflow-hidden"
+        >
             <div className="px-6 py-4 border-b border-gray-800/80 flex justify-between items-center bg-[#080d16]">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <CheckCircle2 className="text-emerald-400" size={18} />
@@ -629,14 +629,17 @@ export default function Approvals() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* REJECT MODAL */}
       {isRejectOpen && selectedCal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#0c1220] border border-gray-800 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+        <Modal
+          isOpen={isRejectOpen}
+          onClose={() => setIsRejectOpen(false)}
+          size="md"
+          className="!p-0 overflow-hidden"
+        >
             <div className="px-6 py-4 border-b border-gray-800/80 flex justify-between items-center bg-[#080d16]">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <XCircle className="text-rose-400" size={18} />
@@ -717,8 +720,7 @@ export default function Approvals() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

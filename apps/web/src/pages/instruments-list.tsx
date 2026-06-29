@@ -3,6 +3,8 @@ import api from '../lib/api';
 import { Instrument } from '@caltrack/types';
 import { Plus, Search, AlertCircle, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { InstrumentStatusBadge } from '../components/ui/Badge';
+import Spinner from '../components/ui/Spinner';
 
 export default function InstrumentsList() {
   const [instruments, setInstruments] = useState<Instrument[]>([]);
@@ -85,9 +87,7 @@ export default function InstrumentsList() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center min-h-[300px]">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-indigo-500"></div>
-        </div>
+        <Spinner minHeight="300px" />
       ) : error ? (
         <div className="p-8 text-center text-red-400 border border-red-500/20 rounded-xl glass-panel">
           <AlertCircle className="mx-auto mb-3 text-red-500" size={36} />
@@ -141,20 +141,7 @@ export default function InstrumentsList() {
                       {inst.location}
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                        inst.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                        inst.status === 'CALIBRATION_DUE' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                        inst.status === 'OVERDUE' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                        'bg-gray-500/10 text-gray-400 border border-gray-500/20'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          inst.status === 'ACTIVE' ? 'bg-emerald-500' :
-                          inst.status === 'CALIBRATION_DUE' ? 'bg-amber-500' :
-                          inst.status === 'OVERDUE' ? 'bg-red-500' :
-                          'bg-gray-500'
-                        }`}></span>
-                        {inst.status.replace('_', ' ')}
-                      </span>
+                      <InstrumentStatusBadge status={inst.status} />
                     </td>
                     <td className="py-4 px-6 text-right text-xs">
                       <div className="flex justify-end gap-3 opacity-80 group-hover:opacity-100 transition-opacity">

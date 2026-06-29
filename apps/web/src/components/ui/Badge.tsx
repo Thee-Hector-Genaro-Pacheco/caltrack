@@ -61,4 +61,68 @@ export function Badge({
   );
 }
 
+export function InstrumentStatusBadge({ status }: { status: string }) {
+  const variant =
+    status === 'ACTIVE'
+      ? 'success'
+      : status === 'CALIBRATION_DUE'
+      ? 'warning'
+      : status === 'OVERDUE'
+      ? 'danger'
+      : 'default';
+  return (
+    <Badge variant={variant} showDot>
+      {status.replace('_', ' ')}
+    </Badge>
+  );
+}
+
+export function CalibrationStatusBadge({ status }: { status: string }) {
+  const variant =
+    status === 'APPROVED'
+      ? 'success'
+      : status === 'PENDING_REVIEW'
+      ? 'warning'
+      : status === 'REJECTED'
+      ? 'danger'
+      : 'default';
+  return (
+    <Badge variant={variant}>
+      {status.replace('_', ' ')}
+    </Badge>
+  );
+}
+
+export function ReferenceStandardStatusBadge({ status }: { status: string }) {
+  const variant =
+    status === 'ACTIVE'
+      ? 'success'
+      : status === 'DUE_SOON'
+      ? 'warning'
+      : status === 'EXPIRED'
+      ? 'danger'
+      : 'default';
+  return (
+    <Badge variant={variant}>
+      {status.replace('_', ' ')}
+    </Badge>
+  );
+}
+
+export function WorkOrderStatusBadge({ status }: { status: string }) {
+  const variant =
+    status === 'COMPLETED'
+      ? 'success'
+      : status === 'IN_PROGRESS'
+      ? 'warning'
+      : status === 'OPEN'
+      ? 'info'
+      : 'danger';
+  return (
+    <Badge variant={variant}>
+      {status.replace('_', ' ')}
+    </Badge>
+  );
+}
+
 export default Badge;

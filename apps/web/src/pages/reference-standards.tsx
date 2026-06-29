@@ -3,6 +3,8 @@ import api from '../lib/api';
 import { ReferenceStandard, ReferenceStandardStatus } from '@caltrack/types';
 import { Plus, Search, ShieldAlert, X, Award, AlertTriangle, Eye, RefreshCw } from 'lucide-react';
 import { formatDate } from '@caltrack/utils';
+import { ReferenceStandardStatusBadge } from '../components/ui/Badge';
+import Spinner from '../components/ui/Spinner';
 
 export default function ReferenceStandards() {
   const [standards, setStandards] = useState<ReferenceStandard[]>([]);
@@ -118,27 +120,7 @@ export default function ReferenceStandards() {
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusStyle = (statusVal: ReferenceStandardStatus, dueDateStr: Date | string) => {
-    const isPastDue = new Date(dueDateStr) < new Date() && statusVal !== 'OUT_OF_SERVICE';
-    if (statusVal === 'EXPIRED' || isPastDue) {
-      return 'bg-red-500/10 text-red-400 border border-red-500/20';
-    }
-    if (statusVal === 'DUE_SOON') {
-      return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
-    }
-    if (statusVal === 'OUT_OF_SERVICE') {
-      return 'bg-gray-500/10 text-gray-400 border border-gray-500/20';
-    }
-    return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-  };
-
-  const getStatusDot = (statusVal: ReferenceStandardStatus, dueDateStr: Date | string) => {
-    const isPastDue = new Date(dueDateStr) < new Date() && statusVal !== 'OUT_OF_SERVICE';
-    if (statusVal === 'EXPIRED' || isPastDue) return 'bg-red-500';
-    if (statusVal === 'DUE_SOON') return 'bg-amber-500';
-    if (statusVal === 'OUT_OF_SERVICE') return 'bg-gray-500';
-    return 'bg-emerald-500';
-  };
+  // Centralized to ReferenceStandardStatusBadge
 
   return (
     <div className="space-y-6">
@@ -229,9 +211,7 @@ export default function ReferenceStandards() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center min-h-[300px]">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-indigo-500"></div>
-        </div>
+        <Spinner minHeight="300px" />
       ) : error ? (
         <div className="p-8 text-center text-red-400 border border-red-500/20 rounded-xl glass-panel">
           <ShieldAlert className="mx-auto mb-3 text-red-500" size={36} />
@@ -287,10 +267,7 @@ export default function ReferenceStandards() {
                       {formatDate(std.calibrationDueDate)}
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${getStatusStyle(std.status, std.calibrationDueDate)}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(std.status, std.calibrationDueDate)}`}></span>
-                        {std.status.replace('_', ' ')}
-                      </span>
+                      <ReferenceStandardStatusBadge status={std.status} />
                     </td>
                     <td className="py-4 px-6 text-right text-xs">
                       <button
@@ -558,10 +535,7 @@ export default function ReferenceStandards() {
                 </div>
                 <div>
                   <span className="text-[10px] uppercase tracking-wider text-gray-500 block font-semibold">Status Badge</span>
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold mt-1 ${getStatusStyle(selectedStandard.status, selectedStandard.calibrationDueDate)}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(selectedStandard.status, selectedStandard.calibrationDueDate)}`}></span>
-                    {selectedStandard.status.replace('_', ' ')}
-                  </span>
+                  <ReferenceStandardStatusBadge status={selectedStandard.status} />
                 </div>
               </div>
 

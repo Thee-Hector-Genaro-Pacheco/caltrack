@@ -18,6 +18,7 @@ import DocumentationLibrary from './pages/documentation-library';
 import DocumentationUpload from './pages/documentation-upload';
 import DocumentationDetails from './pages/documentation-details';
 import AppLayout from './layouts/AppLayout';
+import Spinner from './components/ui/Spinner';
 
 
 export default function App() {
@@ -59,11 +60,7 @@ export default function App() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#090d16] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-indigo-500"></div>
-      </div>
-    );
+    return <Spinner fullPage size="lg" />;
   }
 
   const userEmail = session?.user?.email || 'admin@caltrack.com';

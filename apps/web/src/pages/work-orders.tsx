@@ -4,6 +4,8 @@ import { WorkOrder, WorkOrderStatus, WorkOrderPriority, Instrument } from '@calt
 import { Plus, Search, AlertCircle, RefreshCw, ClipboardList, Play, Check, X, Calendar, User, Eye, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDate } from '@caltrack/utils';
+import { WorkOrderStatusBadge } from '../components/ui/Badge';
+import Spinner from '../components/ui/Spinner';
 
 export default function WorkOrders() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
@@ -169,20 +171,7 @@ export default function WorkOrders() {
     }
   };
 
-  const getStatusBadgeClass = (status: WorkOrderStatus) => {
-    switch (status) {
-      case 'OPEN':
-        return 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30';
-      case 'IN_PROGRESS':
-        return 'bg-amber-500/15 text-amber-400 border border-amber-500/30';
-      case 'COMPLETED':
-        return 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
-      case 'CANCELLED':
-        return 'bg-rose-500/15 text-rose-400 border border-rose-500/30';
-      default:
-        return 'bg-slate-500/15 text-slate-400 border border-slate-500/30';
-    }
-  };
+  // getStatusBadgeClass has been centralized to WorkOrderStatusBadge
 
   return (
     <div className="space-y-6 relative">
@@ -276,9 +265,7 @@ export default function WorkOrders() {
 
       {/* Grid or Table Listing */}
       {loading ? (
-        <div className="flex items-center justify-center min-h-[300px]">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-indigo-500"></div>
-        </div>
+        <Spinner minHeight="300px" />
       ) : error ? (
         <div className="p-8 text-center text-red-400 border border-red-500/20 rounded-xl glass-panel">
           <AlertCircle className="mx-auto mb-3 text-red-500" size={36} />
@@ -339,9 +326,7 @@ export default function WorkOrders() {
                       </span>
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`inline-flex px-2.5 py-0.5 rounded text-[10px] font-bold uppercase ${getStatusBadgeClass(wo.status)}`}>
-                        {wo.status.replace('_', ' ')}
-                      </span>
+                      <WorkOrderStatusBadge status={wo.status} />
                     </td>
                     <td className="py-4 px-6 text-xs">
                       {wo.assignedTechnician ? (
