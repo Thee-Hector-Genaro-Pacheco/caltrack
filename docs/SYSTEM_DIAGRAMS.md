@@ -1,65 +1,145 @@
 # CalTrack System Diagrams
 
-## Overall System Architecture
+## Enterprise Architecture Overview
+
+![CalTrack Enterprise Architecture](./assets/caltrack-enterprise-architecture.png)
+
+---
+
+# Overall System Architecture
 
 ```mermaid
 flowchart TD
-    A[React Web App] --> B[Express API]
-    B --> C[Prisma ORM]
-    C --> D[(PostgreSQL)]
-    B --> E[CalTrack AI Package]
-    E --> F[Agents]
-    E --> G[Tools]
-    G --> B
 
-    flowchart TD
-    User[User Request] --> Supervisor[Supervisor Agent]
-    Supervisor --> Calibration[Calibration Agent]
-    Supervisor --> Documentation[Documentation Agent]
-    Supervisor --> Metrology[Metrology Agent]
-    Supervisor --> Planning[Planning Agent]
-    Supervisor --> QA[QA Agent]
-    Supervisor --> Reporting[Reporting Agent]
+    A[React Web Application]
+    B[Express REST API]
+    C[CalTrack AI Package]
+    D[Prisma ORM]
+    E[(PostgreSQL)]
 
-    Calibration --> Tools[Tool Registry]
-    Documentation --> Tools
-    Metrology --> Tools
-    Planning --> Tools
-    QA --> Tools
-    Reporting --> Tools
+    A --> B
+    B --> C
+    B --> D
+    D --> E
+```
 
-    Tools --> Services[Application Services]
-    Services --> Prisma[Prisma ORM]
-    Prisma --> DB[(PostgreSQL)]
+---
 
+# AI Multi-Agent Architecture
 
+```mermaid
+flowchart TD
 
-    flowchart TD
-    A[Instrument Registered] --> B[Calibration Due]
-    B --> C[Work Order Created]
-    C --> D[Technician Performs 5-Point Calibration]
-    D --> E[Calibration Record Created]
-    E --> F[Submit for Review]
-    F --> G{QA Review}
-    G -->|Approve| H[Electronic Signature]
-    G -->|Reject| I[Rework Required]
-    H --> J[Immutable Approved Record]
+    User[User Request]
 
-    flowchart TD
-    A[Instrument Details Page] --> B[AI Calibration Assistant]
-    B --> C[Get Instrument Tool]
-    B --> D[Get Calibration History Tool]
-    B --> E[Search Reference Standard Tool]
-    B --> F[Search Documentation Tool]
+    Supervisor[Supervisor Agent]
 
-    C --> G[Instrument Data]
-    D --> H[Calibration History]
-    E --> I[Metrology Data]
-    F --> J[Procedures and Manuals]
+    Calibration[Calibration Agent]
+    Documentation[Documentation Agent]
+    Metrology[Metrology Agent]
+    Planning[Planning Agent]
+    QA[QA Agent]
+    Reporting[Reporting Agent]
 
-    G --> K[Technician Briefing]
-    H --> K
-    I --> K
+    ToolRegistry[Tool Registry]
+
+    Services[Application Services]
+
+    Prisma[Prisma ORM]
+
+    Database[(PostgreSQL)]
+
+    User --> Supervisor
+
+    Supervisor --> Calibration
+    Supervisor --> Documentation
+    Supervisor --> Metrology
+    Supervisor --> Planning
+    Supervisor --> QA
+    Supervisor --> Reporting
+
+    Calibration --> ToolRegistry
+    Documentation --> ToolRegistry
+    Metrology --> ToolRegistry
+    Planning --> ToolRegistry
+    QA --> ToolRegistry
+    Reporting --> ToolRegistry
+
+    ToolRegistry --> Services
+    Services --> Prisma
+    Prisma --> Database
+```
+
+---
+
+# Calibration Workflow
+
+```mermaid
+flowchart TD
+
+    A[Instrument Registered]
+    B[Calibration Due]
+    C[Work Order Created]
+    D[Technician Performs Calibration]
+    E[Calibration Record]
+    F[Submit For Review]
+    G{QA Review}
+    H[Approved]
+    I[Rejected]
+    J[Electronic Signature]
+    K[Permanent Audit Record]
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+
+    G -->|Approve| H
+    G -->|Reject| I
+
+    H --> J
     J --> K
+```
 
-    
+---
+
+# AI Calibration Assistant Workflow
+
+```mermaid
+flowchart TD
+
+    Instrument[Instrument Details Page]
+
+    Assistant[AI Calibration Assistant]
+
+    InstrumentTool[Get Instrument Tool]
+    HistoryTool[Get Calibration History Tool]
+    StandardTool[Search Reference Standard Tool]
+    DocumentationTool[Search Documentation Tool]
+
+    InstrumentData[Instrument Data]
+    HistoryData[Calibration History]
+    StandardData[Reference Standards]
+    DocumentationData[Technical Documentation]
+
+    Briefing[Technician Briefing]
+
+    Instrument --> Assistant
+
+    Assistant --> InstrumentTool
+    Assistant --> HistoryTool
+    Assistant --> StandardTool
+    Assistant --> DocumentationTool
+
+    InstrumentTool --> InstrumentData
+    HistoryTool --> HistoryData
+    StandardTool --> StandardData
+    DocumentationTool --> DocumentationData
+
+    InstrumentData --> Briefing
+    HistoryData --> Briefing
+    StandardData --> Briefing
+    DocumentationData --> Briefing
+```
