@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: caltrack-postgres-prod
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: caltrack
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d caltrack"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: caltrack-api-prod
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgrespassword@postgres:5432/caltrack?schema=public
+      JWT_SECRET: supersecretproductionkey123!
+      FRONTEND_URL: http://localhost
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: caltrack-web-prod
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data_prod:

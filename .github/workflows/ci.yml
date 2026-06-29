@@ -1,0 +1,39 @@
+name: CalTrack CI Pipeline
+
+on:
+  push:
+    branches: [ main, master, dev, staging ]
+  pull_request:
+    branches: [ main, master, dev, staging ]
+
+jobs:
+  build-and-verify:
+    name: Build & TypeScript Compilation Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-size: 20
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Validate Database Schema Types Generation
+        run: npm run prisma:generate
+
+      - name: Run TypeScript Compile Check (tsc --noEmit)
+        run: |
+          npx tsc --noEmit --workspace=@caltrack/types
+          npx tsc --noEmit --workspace=@caltrack/utils
+          npx tsc --noEmit --workspace=@caltrack/ai
+          npx tsc --noEmit --workspace=@caltrack/api
+          npx tsc --noEmit --workspace=@caltrack/web
+
+      - name: Build Monorepo Workspaces
+        run: npm run build

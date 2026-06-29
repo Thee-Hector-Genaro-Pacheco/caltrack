@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../db/prisma';
 import { requireAuth, AuthRequest } from '../middleware/auth.middleware';
+import logger from '../services/logger.service';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'caltrack-secure-jwt-key';
@@ -20,11 +21,13 @@ router.post('/login', async (req: Request, res: Response) => {
     });
 
     if (!user || !user.isActive) {
+      logger.warn(`Authentication failure: account not found or inactive for email ${email}`, { email });
       return res.status(401).json({ error: 'Invalid credentials or inactive account' });
     }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
+      logger.warn(`Authentication failure: invalid password credentials for email ${email}`, { email, userId: user.id });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -33,6 +36,8 @@ router.post('/login', async (req: Request, res: Response) => {
       JWT_SECRET,
       { expiresIn: '24h' }
     );
+
+    logger.info(`Authentication successful for user ${user.email}`, { userId: user.id, email: user.email, role: user.role });
 
     // Omit password hash in response
     const { passwordHash, ...userWithoutPassword } = user;
