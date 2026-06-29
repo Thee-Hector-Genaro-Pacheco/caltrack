@@ -443,3 +443,27 @@ export interface InstrumentIntelligenceSummary {
   riskLevel: CalibrationRiskLevel;
   recommendedAttentionItems: string[];
 }
+
+export type UserRole = 'ADMINISTRATOR' | 'SUPERVISOR' | 'QA_REVIEWER' | 'TECHNICIAN' | 'METROLOGY_MANAGER';
+
+export interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  passwordHash?: string;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export interface LoginDto {
+  email: string;
+  password?: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  token: string;
+}

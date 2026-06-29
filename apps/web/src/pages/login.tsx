@@ -1,155 +1,170 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { ShieldCheck, Lock, Mail, Server } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
+import Spinner from '../components/ui/Spinner';
+import { KeyRound, ShieldCheck, Mail, ArrowRight, AlertCircle } from 'lucide-react';
 
-export default function Login() {
+export const Login: React.FC = () => {
+  const { login, user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [password, setPassword] = useState('Password123!');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const navigate = useNavigate();
 
-  const handleAuth = async (e: React.FormEvent) => {
+  // Redirect if already logged in
+  React.useEffect(() => {
+    if (user) {
+      const from = (location.state as any)?.from?.pathname || '/';
+      navigate(from, { replace: true });
+    }
+  }, [user, navigate, location]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    if (!isSupabaseConfigured) {
-      localStorage.setItem('caltrack_mock_token', 'mock-jwt-auth-session-token');
-      localStorage.setItem('caltrack_user_email', email || 'technician@caltrack.com');
-      setTimeout(() => {
-        setLoading(false);
-        navigate('/dashboard');
-      }, 600);
+    if (!email) {
+      setError('Email address is required');
       return;
     }
+    setError(null);
+    setLoading(true);
 
     try {
-      if (isSignUp) {
-        const { error: signUpError } = await supabase!.auth.signUp({
-          email,
-          password,
-        });
-        if (signUpError) throw signUpError;
-        setSuccess('Registration successful! Check your email for confirmation link or sign in.');
-        setIsSignUp(false);
-      } else {
-        const { error: signInError } = await supabase!.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (signInError) throw signInError;
-        navigate('/dashboard');
-      }
+      await login({ email, password });
+      const from = (location.state as any)?.from?.pathname || '/';
+      navigate(from, { replace: true });
     } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+      console.error('Authentication failure:', err);
+      setError(err.message || 'Invalid email or password. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-[#090d16] px-4 relative overflow-hidden">
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-900/10 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-sky-900/10 rounded-full blur-[100px] pointer-events-none"></div>
+  const handleQuickLogin = (demoEmail: string) => {
+    setEmail(demoEmail);
+    setPassword('Password123!');
+    setError(null);
+  };
 
-      <div className="w-full max-w-md glass-panel p-8 rounded-2xl glow-primary relative z-10">
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-indigo-600/10 border border-indigo-500/20 rounded-2xl flex items-center justify-center mb-4 text-indigo-400">
-            <ShieldCheck size={36} />
+  const demoAccounts = [
+    { email: 'admin@caltrack.com', label: 'Administrator', desc: 'Full registry & standards access' },
+    { email: 'supervisor@caltrack.com', label: 'Supervisor', desc: 'Manage orders and schedules' },
+    { email: 'qa@caltrack.com', label: 'QA Reviewer', desc: 'Approve & reject calibrations' },
+    { email: 'technician@caltrack.com', label: 'Technician', desc: 'Submit calibrations' },
+    { email: 'manager@caltrack.com', label: 'Metrology Mgr', desc: 'NIST standards management' },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#070b13] flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden">
+      {/* Background industrial gird decorative glows */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-500/5 blur-[120px]" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-slate-500/5 blur-[120px]" />
+
+      <div className="w-full max-w-lg space-y-6 z-10">
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center gap-2 text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20 text-xs font-semibold uppercase tracking-wider">
+            <ShieldCheck size={14} />
+            CalTrack Enterprise Identity
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white">CALTRACK</h1>
-          <p className="text-gray-400 text-sm mt-1 text-center">Industrial Instrumentation & Calibration Management</p>
+          <h1 className="text-3xl font-black tracking-tight text-white font-sans mt-2">
+            CAL<span className="text-indigo-400">TRACK</span>
+          </h1>
+          <p className="text-xs text-gray-500">
+            Secure Role-Based Access Control and Calibration Audit Logging.
+          </p>
         </div>
 
-        {!isSupabaseConfigured && (
-          <div className="mb-6 p-3 bg-amber-950/20 border border-amber-500/30 rounded-lg flex gap-3 text-xs text-amber-300">
-            <Server size={20} className="shrink-0 mt-0.5" />
-            <div>
-              <span className="font-semibold block mb-0.5">Demo Simulation Active</span>
-              Supabase Auth env keys are not set. The login screen will simulate sessions locally using local storage.
-            </div>
-          </div>
-        )}
+        <Card className="border border-gray-800/80 bg-[#090d16]/90 p-8 shadow-2xl rounded-2xl space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-lg p-3">
+                <AlertCircle className="shrink-0 mt-0.5" size={15} />
+                <span>{error}</span>
+              </div>
+            )}
 
-        {error && (
-          <div className="mb-6 p-3 bg-red-950/20 border border-red-500/30 text-red-200 text-sm rounded-lg">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-6 p-3 bg-emerald-950/20 border border-emerald-500/30 text-emerald-200 text-sm rounded-lg">
-            {success}
-          </div>
-        )}
-
-        <form onSubmit={handleAuth} className="space-y-5">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <input
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Mail size={12} />
+                Enterprise Email Address
+              </label>
+              <Input
                 type="email"
-                required
-                className="w-full bg-slate-900/60 border border-gray-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                placeholder="tech@facility.com"
+                placeholder="email@caltrack.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+                className="bg-slate-950/60 border-gray-800 text-sm focus:border-indigo-500"
               />
             </div>
-          </div>
 
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-              Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <input
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                <KeyRound size={12} />
+                Password
+              </label>
+              <Input
                 type="password"
-                required
-                className="w-full bg-slate-900/60 border border-gray-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                placeholder="••••••••"
+                placeholder="••••••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                className="bg-slate-950/60 border-gray-800 text-sm focus:border-indigo-500"
               />
             </div>
+
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={loading}
+              className="w-full justify-center text-sm py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold flex items-center gap-2 mt-2 shadow-lg shadow-indigo-600/20 transition-all duration-200"
+            >
+              {loading ? (
+                <>
+                  <Spinner size="sm" />
+                  <span>Verifying Credentials...</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight size={15} />
+                </>
+              )}
+            </Button>
+          </form>
+
+          {/* Quick-select Demo Registry */}
+          <div className="pt-4 border-t border-gray-800/80 space-y-3">
+            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest block text-center">
+              Quick Connect Role Selectors
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {demoAccounts.map((acc) => (
+                <button
+                  key={acc.email}
+                  type="button"
+                  onClick={() => handleQuickLogin(acc.email)}
+                  className={`flex flex-col text-left p-2.5 rounded-lg border text-xs font-sans transition-all duration-150 ${
+                    email === acc.email
+                      ? 'bg-indigo-500/10 border-indigo-500 text-white'
+                      : 'bg-slate-950/30 border-gray-800 text-gray-400 hover:border-gray-700 hover:bg-slate-950/50'
+                  }`}
+                >
+                  <span className="font-bold text-white text-[11px]">{acc.label}</span>
+                  <span className="text-[9px] text-gray-500 truncate">{acc.desc}</span>
+                </button>
+              ))}
+            </div>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full btn-transition bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 mt-4 shadow-lg shadow-indigo-600/20 disabled:opacity-50"
-          >
-            {loading ? 'Processing...' : isSignUp ? 'Create Technician Account' : 'Sign In'}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center text-sm text-gray-400">
-          {isSignUp ? (
-            <p>
-              Already have an account?{' '}
-              <button onClick={() => setIsSignUp(false)} className="text-indigo-400 hover:underline">
-                Sign In
-              </button>
-            </p>
-          ) : (
-            <p>
-              New technician?{' '}
-              <button onClick={() => setIsSignUp(true)} className="text-indigo-400 hover:underline">
-                Register Account
-              </button>
-            </p>
-          )}
-        </div>
+        </Card>
       </div>
     </div>
   );
-}
+};
+
+export default Login;

@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { requireRole } from '../middleware/rbac.middleware';
 import * as instrumentService from '../services/instrument.service';
 import prisma from '../db/prisma';
 import { z } from 'zod';
@@ -102,10 +103,10 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/calibrations
-router.post('/', async (req: AuthRequest, res: Response) => {
+router.post('/', requireRole(['TECHNICIAN']), async (req: AuthRequest, res: Response) => {
   try {
     const data = createCalibrationSchema.parse(req.body);
-    const changer = req.user?.email || 'admin@caltrack.com';
+    const changer = req.user!.email;
     const record = await instrumentService.addCalibrationRecord(data, changer);
     res.status(201).json(record);
   } catch (error: any) {
@@ -117,10 +118,10 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/calibrations/:id/submit
-router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
+router.post('/:id/submit', requireRole(['TECHNICIAN']), async (req: AuthRequest, res: Response) => {
   try {
     const { signerName, signerRole } = signatureSchema.parse(req.body);
-    const changer = req.user?.email || 'admin@caltrack.com';
+    const changer = req.user!.email;
     const record = await instrumentService.submitCalibrationForReview(req.params.id, signerName, signerRole, changer);
     res.json(record);
   } catch (error: any) {
@@ -132,10 +133,10 @@ router.post('/:id/submit', async (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/calibrations/:id/approve
-router.post('/:id/approve', async (req: AuthRequest, res: Response) => {
+router.post('/:id/approve', requireRole(['QA_REVIEWER']), async (req: AuthRequest, res: Response) => {
   try {
     const { signerName, signerRole } = signatureSchema.parse(req.body);
-    const changer = req.user?.email || 'admin@caltrack.com';
+    const changer = req.user!.email;
     const record = await instrumentService.approveCalibration(req.params.id, signerName, signerRole, changer);
     res.json(record);
   } catch (error: any) {
@@ -147,10 +148,10 @@ router.post('/:id/approve', async (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/calibrations/:id/reject
-router.post('/:id/reject', async (req: AuthRequest, res: Response) => {
+router.post('/:id/reject', requireRole(['QA_REVIEWER']), async (req: AuthRequest, res: Response) => {
   try {
     const { signerName, signerRole, reason } = rejectionSchema.parse(req.body);
-    const changer = req.user?.email || 'admin@caltrack.com';
+    const changer = req.user!.email;
     const record = await instrumentService.rejectCalibration(req.params.id, signerName, signerRole, reason, changer);
     res.json(record);
   } catch (error: any) {
@@ -162,7 +163,7 @@ router.post('/:id/reject', async (req: AuthRequest, res: Response) => {
 });
 
 // PUT /api/calibrations/:id (Lock Enforcement)
-router.put('/:id', async (req: AuthRequest, res: Response) => {
+router.put('/:id', requireRole(['TECHNICIAN']), async (req: AuthRequest, res: Response) => {
   try {
     const record = await prisma.calibrationRecord.findUnique({
       where: { id: req.params.id }
@@ -183,7 +184,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 });
 
 // DELETE /api/calibrations/:id (Lock Enforcement)
-router.delete('/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/:id', requireRole(['TECHNICIAN']), async (req: AuthRequest, res: Response) => {
   try {
     const record = await prisma.calibrationRecord.findUnique({
       where: { id: req.params.id }

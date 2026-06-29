@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { requireRole } from '../middleware/rbac.middleware';
 import * as instrumentService from '../services/instrument.service';
 import { z } from 'zod';
 
@@ -49,10 +50,10 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post('/', async (req: AuthRequest, res: Response) => {
+router.post('/', requireRole(['METROLOGY_MANAGER', 'SUPERVISOR']), async (req: AuthRequest, res: Response) => {
   try {
     const data = createInstrumentSchema.parse(req.body);
-    const changer = req.user?.email || 'admin@caltrack.com';
+    const changer = req.user!.email;
     const instrument = await instrumentService.createInstrument(data, changer);
     res.status(201).json(instrument);
   } catch (error: any) {
@@ -63,10 +64,10 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.put('/:id', async (req: AuthRequest, res: Response) => {
+router.put('/:id', requireRole(['METROLOGY_MANAGER', 'SUPERVISOR']), async (req: AuthRequest, res: Response) => {
   try {
     const data = updateInstrumentSchema.parse(req.body);
-    const changer = req.user?.email || 'admin@caltrack.com';
+    const changer = req.user!.email;
     const instrument = await instrumentService.updateInstrument(req.params.id, data, changer);
     res.json(instrument);
   } catch (error: any) {
@@ -77,10 +78,10 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.delete('/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/:id', requireRole(['METROLOGY_MANAGER', 'SUPERVISOR']), async (req: AuthRequest, res: Response) => {
   try {
     const reason = (req.query.reason as string) || 'Instrument decommissioned';
-    const changer = req.user?.email || 'admin@caltrack.com';
+    const changer = req.user!.email;
     const instrument = await instrumentService.deleteInstrument(req.params.id, changer, reason);
     res.json({ message: 'Instrument deleted successfully', instrument });
   } catch (error: any) {

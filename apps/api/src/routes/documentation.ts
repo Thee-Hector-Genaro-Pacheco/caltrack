@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { requireRole } from '../middleware/rbac.middleware';
 import * as documentationService from '../services/documentation.service';
 import { z } from 'zod';
 
@@ -52,10 +53,10 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post('/', async (req: AuthRequest, res: Response) => {
+router.post('/', requireRole(['METROLOGY_MANAGER', 'SUPERVISOR']), async (req: AuthRequest, res: Response) => {
   try {
     const data = createDocumentationSchema.parse(req.body);
-    const changer = req.user?.email || 'admin@caltrack.com';
+    const changer = req.user!.email;
     const document = await documentationService.createDocumentation(data, changer);
     res.status(201).json(document);
   } catch (error: any) {
@@ -66,10 +67,10 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.put('/:id', async (req: AuthRequest, res: Response) => {
+router.put('/:id', requireRole(['METROLOGY_MANAGER', 'SUPERVISOR']), async (req: AuthRequest, res: Response) => {
   try {
     const data = updateDocumentationSchema.parse(req.body);
-    const changer = req.user?.email || 'admin@caltrack.com';
+    const changer = req.user!.email;
     const document = await documentationService.updateDocumentation(req.params.id, data, changer);
     res.json(document);
   } catch (error: any) {
@@ -80,10 +81,10 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.delete('/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/:id', requireRole(['METROLOGY_MANAGER', 'SUPERVISOR']), async (req: AuthRequest, res: Response) => {
   try {
     const reason = (req.query.reason as string) || 'Document deleted';
-    const changer = req.user?.email || 'admin@caltrack.com';
+    const changer = req.user!.email;
     const document = await documentationService.deleteDocumentation(req.params.id, changer, reason);
     res.json({ message: 'Document deleted successfully', document });
   } catch (error: any) {

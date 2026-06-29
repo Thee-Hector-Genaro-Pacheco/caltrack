@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { requireRole } from '../middleware/rbac.middleware';
 import * as referenceStandardService from '../services/referenceStandard.service';
 import { z } from 'zod';
 
@@ -46,10 +47,10 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/reference-standards
-router.post('/', async (req: AuthRequest, res: Response) => {
+router.post('/', requireRole(['METROLOGY_MANAGER']), async (req: AuthRequest, res: Response) => {
   try {
     const data = createStandardSchema.parse(req.body);
-    const changer = req.user?.email || 'admin@caltrack.com';
+    const changer = req.user!.email;
     const standard = await referenceStandardService.createReferenceStandard(data, changer);
     res.status(201).json(standard);
   } catch (error: any) {
@@ -61,10 +62,10 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 });
 
 // PUT /api/reference-standards/:id
-router.put('/:id', async (req: AuthRequest, res: Response) => {
+router.put('/:id', requireRole(['METROLOGY_MANAGER']), async (req: AuthRequest, res: Response) => {
   try {
     const data = updateStandardSchema.parse(req.body);
-    const changer = req.user?.email || 'admin@caltrack.com';
+    const changer = req.user!.email;
     const standard = await referenceStandardService.updateReferenceStandard(req.params.id, data, changer);
     res.json(standard);
   } catch (error: any) {

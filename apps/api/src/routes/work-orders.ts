@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { requireRole } from '../middleware/rbac.middleware';
 import * as workOrderService from '../services/workorder.service';
 import { z } from 'zod';
 
@@ -33,10 +34,10 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post('/', async (req: AuthRequest, res: Response) => {
+router.post('/', requireRole(['SUPERVISOR']), async (req: AuthRequest, res: Response) => {
   try {
     const data = createWorkOrderSchema.parse(req.body);
-    const changer = req.user?.email || 'admin@caltrack.com';
+    const changer = req.user!.email;
     const wo = await workOrderService.createWorkOrder(data, changer);
     res.status(201).json(wo);
   } catch (error: any) {
@@ -47,9 +48,9 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post('/generate', async (req: AuthRequest, res: Response) => {
+router.post('/generate', requireRole(['SUPERVISOR']), async (req: AuthRequest, res: Response) => {
   try {
-    const changer = req.user?.email || 'admin@caltrack.com';
+    const changer = req.user!.email;
     const result = await workOrderService.generateWorkOrdersForDueInstruments(changer);
     res.json(result);
   } catch (error: any) {
@@ -57,10 +58,10 @@ router.post('/generate', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.patch('/:id', async (req: AuthRequest, res: Response) => {
+router.patch('/:id', requireRole(['SUPERVISOR']), async (req: AuthRequest, res: Response) => {
   try {
     const data = updateWorkOrderSchema.parse(req.body);
-    const changer = req.user?.email || 'admin@caltrack.com';
+    const changer = req.user!.email;
     const wo = await workOrderService.updateWorkOrder(req.params.id, data, changer);
     res.json(wo);
   } catch (error: any) {

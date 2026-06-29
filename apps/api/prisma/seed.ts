@@ -2,11 +2,13 @@
 import { PrismaClient, InstrumentStatus } from '@prisma/client';
 import { getOutputSpan, calculateExpectedOutput, calculateErrorPercent, calculateTargetInput } from '@caltrack/utils';
 import { createHash } from 'crypto';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Clearing database tables...');
+  await prisma.user.deleteMany({});
   await prisma.auditEvent.deleteMany({});
   await prisma.calibrationReferenceStandard.deleteMany({});
   await prisma.calibrationTestPoint.deleteMany({});
@@ -15,6 +17,65 @@ async function main() {
   await prisma.instrument.deleteMany({});
   await prisma.controlLoop.deleteMany({});
   await prisma.processArea.deleteMany({});
+
+  console.log('Seeding enterprise users...');
+  const salt = await bcrypt.genSalt(10);
+  const passwordHash = await bcrypt.hash('Password123!', salt);
+
+  await prisma.user.create({
+    data: {
+      firstName: 'Admin',
+      lastName: 'User',
+      email: 'admin@caltrack.com',
+      passwordHash,
+      role: 'ADMINISTRATOR',
+      isActive: true,
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      firstName: 'Marcus',
+      lastName: 'Supervisor',
+      email: 'supervisor@caltrack.com',
+      passwordHash,
+      role: 'SUPERVISOR',
+      isActive: true,
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      firstName: 'Elena',
+      lastName: 'QA',
+      email: 'qa@caltrack.com',
+      passwordHash,
+      role: 'QA_REVIEWER',
+      isActive: true,
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      firstName: 'John',
+      lastName: 'Technician',
+      email: 'technician@caltrack.com',
+      passwordHash,
+      role: 'TECHNICIAN',
+      isActive: true,
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      firstName: 'Sarah',
+      lastName: 'Manager',
+      email: 'manager@caltrack.com',
+      passwordHash,
+      role: 'METROLOGY_MANAGER',
+      isActive: true,
+    },
+  });
 
   console.log('Database cleared. Seeding plant hierarchy...');
 

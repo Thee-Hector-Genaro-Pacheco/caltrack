@@ -1,12 +1,13 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Database,
   ShieldCheck,
   Activity,
   LogOut,
   LayoutDashboard,
-  User,
+  User as UserIcon,
   Layers,
   RefreshCw,
   ClipboardList,
@@ -17,12 +18,18 @@ import {
 
 export interface AppLayoutProps {
   children: React.ReactNode;
-  userEmail: string;
-  handleLogout: () => void;
+  userEmail?: string;
+  handleLogout?: () => void;
 }
 
 export function AppLayout({ children, userEmail, handleLogout }: AppLayoutProps) {
+  const { user: authUser, logout: authLogout } = useAuth();
   const location = useLocation();
+
+  const displayEmail = authUser?.email || userEmail || 'guest@caltrack.com';
+  const displayRole = authUser?.role || 'TECHNICIAN';
+  const name = authUser ? `${authUser.firstName} ${authUser.lastName}` : displayEmail.split('@')[0];
+  const finalLogout = authUser ? authLogout : (handleLogout || (() => {}));
 
   const isLinkActive = (path: string) => {
     if (path === '/dashboard') return location.pathname === '/dashboard';
@@ -85,28 +92,32 @@ export function AppLayout({ children, userEmail, handleLogout }: AppLayoutProps)
               <ClipboardList size={18} />
               Work Orders
             </Link>
-            <Link
-              to="/approvals"
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                isLinkActive('/approvals')
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10'
-                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <ClipboardCheck size={18} />
-              Approvals
-            </Link>
-            <Link
-              to="/reference-standards"
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                isLinkActive('/reference-standards')
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10'
-                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <Scale size={18} />
-              Reference Standards
-            </Link>
+            {(displayRole === 'QA_REVIEWER' || displayRole === 'ADMINISTRATOR') && (
+              <Link
+                to="/approvals"
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  isLinkActive('/approvals')
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10'
+                    : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <ClipboardCheck size={18} />
+                Approvals
+              </Link>
+            )}
+            {(displayRole === 'METROLOGY_MANAGER' || displayRole === 'ADMINISTRATOR') && (
+              <Link
+                to="/reference-standards"
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  isLinkActive('/reference-standards')
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10'
+                    : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <Scale size={18} />
+                Reference Standards
+              </Link>
+            )}
             <Link
               to="/documentation"
               className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
@@ -146,16 +157,25 @@ export function AppLayout({ children, userEmail, handleLogout }: AppLayoutProps)
         <div className="p-4 border-t border-gray-800">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-indigo-400 border border-white/5">
-              <User size={16} />
+              <UserIcon size={16} />
             </div>
             <div className="overflow-hidden">
-              <span className="block text-xs font-semibold text-white truncate">{userEmail.split('@')[0]}</span>
-              <span className="block text-[10px] text-gray-500 truncate" title={userEmail}>{userEmail}</span>
+              <span className="block text-xs font-semibold text-white truncate">{name}</span>
+              <span className="block text-[10px] text-gray-500 truncate" title={displayEmail}>{displayEmail}</span>
+              <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase mt-1 tracking-wider ${
+                displayRole === 'ADMINISTRATOR' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                displayRole === 'SUPERVISOR' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' :
+                displayRole === 'QA_REVIEWER' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                displayRole === 'METROLOGY_MANAGER' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                'bg-slate-500/20 text-slate-400 border border-slate-500/30'
+              }`}>
+                {displayRole.replace('_', ' ')}
+              </span>
             </div>
           </div>
 
           <button
-            onClick={handleLogout}
+            onClick={finalLogout}
             className="w-full btn-transition flex items-center justify-center gap-2 py-2 px-3 bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-400 text-xs font-semibold rounded-lg"
           >
             <LogOut size={14} />

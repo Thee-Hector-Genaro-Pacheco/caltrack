@@ -13,6 +13,7 @@ import referenceStandardsRouter from './routes/reference-standards';
 import aiRouter from './routes/ai';
 import documentationRouter from './routes/documentation';
 import intelligenceRouter from './routes/intelligence';
+import authRouter from './routes/auth';
 
 
 
@@ -31,6 +32,9 @@ app.use(express.json());
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date() });
 });
+
+// Public auth routes
+app.use('/api/auth', authRouter);
 
 // Protected routes
 app.use('/api/instruments', requireAuth, instrumentsRouter);

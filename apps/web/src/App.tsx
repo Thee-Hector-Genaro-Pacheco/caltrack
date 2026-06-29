@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { supabase, isSupabaseConfigured } from './lib/supabase';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/login';
 import Dashboard from './pages/dashboard';
 import InstrumentsList from './pages/instruments-list';
@@ -18,91 +18,88 @@ import DocumentationLibrary from './pages/documentation-library';
 import DocumentationUpload from './pages/documentation-upload';
 import DocumentationDetails from './pages/documentation-details';
 import AppLayout from './layouts/AppLayout';
-import Spinner from './components/ui/Spinner';
-
 
 export default function App() {
-  const [session, setSession] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!isSupabaseConfigured) {
-      const mockToken = localStorage.getItem('caltrack_mock_token');
-      const mockEmail = localStorage.getItem('caltrack_user_email') || 'technician@caltrack.com';
-      if (mockToken) {
-        setSession({ user: { email: mockEmail } });
-      }
-      setLoading(false);
-      return;
-    }
-
-    supabase!.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase!.auth.onAuthStateChange((_event, currentSession) => {
-      setSession(currentSession);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleLogout = async () => {
-    if (!isSupabaseConfigured) {
-      localStorage.removeItem('caltrack_mock_token');
-      localStorage.removeItem('caltrack_user_email');
-      setSession(null);
-      return;
-    }
-    await supabase!.auth.signOut();
-  };
-
-  if (loading) {
-    return <Spinner fullPage size="lg" />;
-  }
-
-  const userEmail = session?.user?.email || 'admin@caltrack.com';
-
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route
-          path="/login"
-          element={session ? <Navigate to="/dashboard" replace /> : <Login />}
-        />
-        
-        <Route
-          path="/*"
-          element={
-            session ? (
-              <AppLayout userEmail={userEmail} handleLogout={handleLogout}>
-                <Routes>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/process-areas" element={<ProcessAreas />} />
-                  <Route path="/control-loops" element={<ControlLoops />} />
-                  <Route path="/control-loops/:id" element={<LoopDetails />} />
-                  <Route path="/work-orders" element={<WorkOrders />} />
-                  <Route path="/approvals" element={<Approvals />} />
-                  <Route path="/reference-standards" element={<ReferenceStandards />} />
-                  <Route path="/documentation" element={<DocumentationLibrary />} />
-                  <Route path="/documentation/new" element={<DocumentationUpload />} />
-                  <Route path="/documentation/:id" element={<DocumentationDetails />} />
-                  <Route path="/instruments" element={<InstrumentsList />} />
-                  <Route path="/instruments/new" element={<InstrumentNew />} />
-                  <Route path="/instruments/:id" element={<InstrumentDetails />} />
-                  <Route path="/instruments/:id/edit" element={<InstrumentEdit />} />
-                  <Route path="/audit" element={<AuditTrail />} />
-                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                </Routes>
-              </AppLayout>
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Routes>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/process-areas" element={<ProcessAreas />} />
+                    <Route path="/control-loops" element={<ControlLoops />} />
+                    <Route path="/control-loops/:id" element={<LoopDetails />} />
+                    <Route path="/work-orders" element={<WorkOrders />} />
+                    
+                    <Route
+                      path="/approvals"
+                      element={
+                        <ProtectedRoute allowedRoles={['QA_REVIEWER']}>
+                          <Approvals />
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    <Route
+                      path="/reference-standards"
+                      element={
+                        <ProtectedRoute allowedRoles={['METROLOGY_MANAGER']}>
+                          <ReferenceStandards />
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    <Route path="/documentation" element={<DocumentationLibrary />} />
+                    
+                    <Route
+                      path="/documentation/new"
+                      element={
+                        <ProtectedRoute allowedRoles={['METROLOGY_MANAGER', 'SUPERVISOR']}>
+                          <DocumentationUpload />
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    <Route path="/documentation/:id" element={<DocumentationDetails />} />
+                    
+                    <Route path="/instruments" element={<InstrumentsList />} />
+                    
+                    <Route
+                      path="/instruments/new"
+                      element={
+                        <ProtectedRoute allowedRoles={['METROLOGY_MANAGER', 'SUPERVISOR']}>
+                          <InstrumentNew />
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    <Route path="/instruments/:id" element={<InstrumentDetails />} />
+                    
+                    <Route
+                      path="/instruments/:id/edit"
+                      element={
+                        <ProtectedRoute allowedRoles={['METROLOGY_MANAGER', 'SUPERVISOR']}>
+                          <InstrumentEdit />
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    <Route path="/audit" element={<AuditTrail />} />
+                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                  </Routes>
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

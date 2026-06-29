@@ -1,5 +1,5 @@
-import { isSupabaseConfigured, supabase } from './supabase';
-import { Instrument, CalibrationRecord, AuditEvent, DashboardStats, CreateInstrumentDto, UpdateInstrumentDto, CreateCalibrationRecordDto, ProcessArea, CreateProcessAreaDto, ControlLoop, CreateControlLoopDto, WorkOrder, CreateWorkOrderDto, UpdateWorkOrderDto, ReferenceStandard, CreateReferenceStandardDto, UpdateReferenceStandardDto, CalibrationPrepGuidance, TechnicianBriefing, Documentation, CreateDocumentationDto, UpdateDocumentationDto, InstrumentIntelligenceSummary } from '@caltrack/types';
+
+import { Instrument, CalibrationRecord, AuditEvent, DashboardStats, CreateInstrumentDto, UpdateInstrumentDto, CreateCalibrationRecordDto, ProcessArea, CreateProcessAreaDto, ControlLoop, CreateControlLoopDto, WorkOrder, CreateWorkOrderDto, UpdateWorkOrderDto, ReferenceStandard, CreateReferenceStandardDto, UpdateReferenceStandardDto, CalibrationPrepGuidance, TechnicianBriefing, Documentation, CreateDocumentationDto, UpdateDocumentationDto, InstrumentIntelligenceSummary, User, LoginDto, AuthResponse } from '@caltrack/types';
 
 // Mock local storage keys
 const MOCK_INSTRUMENTS_KEY = 'caltrack_mock_instruments';
@@ -626,14 +626,7 @@ const saveMockWorkOrders = (data: any[]) => localStorage.setItem(MOCK_WORK_ORDER
 
 // Fetch helper with token injection and automatic mock fallback
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  let token: string | null = null;
-  
-  if (isSupabaseConfigured && supabase) {
-    const sessionRes = await supabase.auth.getSession();
-    token = sessionRes.data.session?.access_token || null;
-  } else {
-    token = localStorage.getItem('caltrack_mock_token');
-  }
+  const token = localStorage.getItem('caltrack_token');
 
   const headers = new Headers(options.headers);
   if (token) {
@@ -664,6 +657,64 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
   const method = options.method || 'GET';
   const url = new URL(endpoint, 'http://localhost');
   const path = url.pathname;
+  if (path === '/api/auth/login') {
+    const { email } = JSON.parse(options.body as string);
+    const mockUsers: Record<string, { role: string; firstName: string; lastName: string }> = {
+      'admin@caltrack.com': { role: 'ADMINISTRATOR', firstName: 'Admin', lastName: 'User' },
+      'supervisor@caltrack.com': { role: 'SUPERVISOR', firstName: 'Marcus', lastName: 'Supervisor' },
+      'qa@caltrack.com': { role: 'QA_REVIEWER', firstName: 'Elena', lastName: 'QA' },
+      'technician@caltrack.com': { role: 'TECHNICIAN', firstName: 'John', lastName: 'Technician' },
+      'manager@caltrack.com': { role: 'METROLOGY_MANAGER', firstName: 'Sarah', lastName: 'Manager' },
+    };
+
+    const profile = mockUsers[email] || { role: 'TECHNICIAN', firstName: 'Guest', lastName: 'User' };
+    const user = {
+      id: `mock-id-${email}`,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      email,
+      role: profile.role,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    localStorage.setItem('caltrack_user_email', email);
+    localStorage.setItem('caltrack_user_role', profile.role);
+
+    return {
+      user,
+      token: `mock-jwt-token-for-${email}`,
+    } as any;
+  }
+
+  if (path === '/api/auth/me') {
+    const email = localStorage.getItem('caltrack_user_email') || 'admin@caltrack.com';
+    const role = localStorage.getItem('caltrack_user_role') || 'ADMINISTRATOR';
+    const mockUsers: Record<string, { firstName: string; lastName: string }> = {
+      'admin@caltrack.com': { firstName: 'Admin', lastName: 'User' },
+      'supervisor@caltrack.com': { firstName: 'Marcus', lastName: 'Supervisor' },
+      'qa@caltrack.com': { firstName: 'Elena', lastName: 'QA' },
+      'technician@caltrack.com': { firstName: 'John', lastName: 'Technician' },
+      'manager@caltrack.com': { firstName: 'Sarah', lastName: 'Manager' },
+    };
+    const profile = mockUsers[email] || { firstName: 'Guest', lastName: 'User' };
+    return {
+      id: `mock-id-${email}`,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      email,
+      role,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as any;
+  }
+
+  if (path === '/api/auth/logout') {
+    return { success: true } as any;
+  }
+
   const userEmail = localStorage.getItem('caltrack_user_email') || 'admin@caltrack.com';
 
   if (path === '/api/ai/calibration-brief') {
@@ -2589,5 +2640,20 @@ export const api = {
   }),
   getInstrumentsIntelligence: () => request<InstrumentIntelligenceSummary[]>('/api/intelligence/instruments'),
   getInstrumentIntelligence: (id: string) => request<InstrumentIntelligenceSummary>(`/api/intelligence/instruments/${id}`),
+  login: (dto: LoginDto) => request<AuthResponse>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  }),
+  logout: () => request<{ success: boolean }>('/api/auth/logout', {
+    method: 'POST',
+  }),
+  getCurrentUser: () => request<User>('/api/auth/me'),
+  setToken: (token: string | null) => {
+    if (token) {
+      localStorage.setItem('caltrack_token', token);
+    } else {
+      localStorage.removeItem('caltrack_token');
+    }
+  }
 };
 export default api;

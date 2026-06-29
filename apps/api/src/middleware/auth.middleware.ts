@@ -1,15 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-
-const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+import jwt from 'jsonwebtoken';
 
 export interface AuthRequest extends Request {
   user?: {
     id: string;
     email: string;
+    role: string;
   };
 }
 
@@ -17,34 +13,24 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    if (!supabase) {
-      req.user = { id: 'mock-user-id', email: 'admin@caltrack.com' };
-      return next();
-    }
     return res.status(401).json({ error: 'Unauthorized: Missing Authorization header' });
   }
 
   const token = authHeader.split(' ')[1];
-
-  if (!supabase) {
-    req.user = { id: 'mock-user-id', email: 'admin@caltrack.com' };
-    return next();
-  }
+  const JWT_SECRET = process.env.JWT_SECRET || 'caltrack-secure-jwt-key';
 
   try {
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-
-    if (error || !user) {
-      return res.status(401).json({ error: 'Unauthorized: Invalid token' });
-    }
-
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role: string };
+    
     req.user = {
-      id: user.id,
-      email: user.email || 'unknown@caltrack.com',
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role,
     };
     next();
   } catch (err) {
-    return res.status(500).json({ error: 'Internal server verification error' });
+    return res.status(401).json({ error: 'Unauthorized: Invalid or expired session token' });
   }
 }
+
 export default requireAuth;
