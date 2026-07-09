@@ -12,7 +12,11 @@
     "start": "npm run start --workspaces --if-present",
     "prisma:generate": "npm run prisma:generate --workspace=@caltrack/api",
     "prisma:migrate": "npm run prisma:migrate --workspace=@caltrack/api",
-    "db:seed": "npm run db:seed --workspace=@caltrack/api"
+    "db:seed": "npm run db:seed --workspace=@caltrack/api",
+    "deploy:aws:api": "bash scripts/aws/build-and-push-api.sh",
+    "deploy:aws:web": "bash scripts/aws/deploy-frontend.sh",
+    "deploy:aws:migrate": "bash scripts/aws/run-prisma-migrations.sh",
+    "deploy:aws:verify": "bash scripts/aws/verify-deployment.sh"
   },
   "devDependencies": {
     "typescript": "^5.4.5"

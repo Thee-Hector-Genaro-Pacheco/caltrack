@@ -48,53 +48,107 @@ CalTrack's cloud deployment is divided into **Static Web Assets Hosting** (Edge 
 
 ---
 
-## 4. GitHub Actions CI/CD Deployment Process
+## 4. Deployment Automation Scripts
 
-Deployments are automated on pushes to the `main` or `production` branch.
+CalTrack provides a set of automated bash scripts located in `scripts/aws/` to build, migrate, deploy, and verify the application. These scripts can be run locally or integrated directly into CI/CD pipelines.
+
+### Setup Configuration
+
+1. Copy the example configuration template to `.env.aws`:
+   ```bash
+   cp .env.aws.example .env.aws
+   ```
+2. Open `.env.aws` and customize it with your specific AWS account ID, resource names, and target URLs.
+
+### Script Catalog
+
+Each script is fully parameterized using environment variables with secure defaults and strict execution rules (`set -euo pipefail`).
+
+| Script | Purpose | Execution | Package Script Shortcut |
+| :--- | :--- | :--- | :--- |
+| `create-ecr.sh` | Checks for the API ECR repository and creates it with security scanning and KMS encryption if missing. | `bash scripts/aws/create-ecr.sh` | N/A |
+| `build-and-push-api.sh` | Builds the multi-stage Docker API container, authenticates to the ECR registry, tags it, and pushes it to ECR. | `bash scripts/aws/build-and-push-api.sh` | `npm run deploy:aws:api` |
+| `run-prisma-migrations.sh` | Executes database schema migrations securely (direct SQL execution via VPN/SSH tunnel OR triggering a Fargate task). | `bash scripts/aws/run-prisma-migrations.sh` | `npm run deploy:aws:migrate` |
+| `deploy-frontend.sh` | Compiles static React/Vite assets, synchronizes them to the S3 bucket, and triggers a CloudFront invalidation. | `bash scripts/aws/deploy-frontend.sh` | `npm run deploy:aws:web` |
+| `verify-deployment.sh` | Pings the live frontend and API health check URLs to assert system responsiveness. | `bash scripts/aws/verify-deployment.sh` | `npm run deploy:aws:verify` |
+
+### VPC Database Migration Strategies
+
+The database migrations script (`run-prisma-migrations.sh`) supports two operational modes depending on network topology:
+
+1. **Direct Tunnel Mode**: If a connection string is active in `DATABASE_URL` (such as via AWS Client VPN or an SSH tunnel through a bastion host to the private RDS subnet), the script runs migrations using the local CLI:
+   ```bash
+   export DATABASE_URL="postgresql://[USER]:[PASSWORD]@[RDS_ENDPOINT]:5432/[DB_NAME]?schema=public"
+   npm run deploy:aws:migrate
+   ```
+2. **ECS Fargate Isolation Mode**: If `DATABASE_URL` is omitted and `RUN_MIGRATION_ON_ECS=true` is set, the script launches a one-off ECS Fargate task inside the private subnets. This task shares the container image and has direct network access to the RDS database.
+   ```bash
+   export RUN_MIGRATION_ON_ECS=true
+   export SUBNETS=subnet-12345,subnet-67890
+   export SECURITY_GROUPS=sg-12345
+   npm run deploy:aws:migrate
+   ```
+
+---
+
+## 5. GitHub Actions CI/CD Deployment Process
+
+Deployments are automated on pushes to the `release/prod` branch. The pipeline uses the automation scripts in a secure sandbox context:
 
 ```mermaid
 graph TD
-    A[Push to main/production] --> B[CI: Test & Type-Check]
+    A[Push to release/prod] --> B[CI: Test & Type-Check]
     B --> C[CD: Authenticate via OIDC Role]
     C --> D[Deploy Backend]
     C --> E[Deploy Frontend]
     
     %% Backend
-    D --> D1[Login to ECR]
-    D1 --> D2[Build API Docker Image]
-    D2 --> D3[Push to ECR Registry]
-    D3 --> D4[Register ECS Task Definition]
-    D4 --> D5[Update ECS Service - Rolling Deploy]
+    D --> D1[Run build-and-push-api.sh]
+    D1 --> D2[Run run-prisma-migrations.sh ECS task]
+    D2 --> D3[Register ECS Task Definition & Update Service]
     
     %% Frontend
-    E --> E1[Compile Production Vite Assets]
-    E1 --> E2[Upload to S3 Bucket]
-    E2 --> E3[Invalidate CloudFront Cache]
+    E --> E1[Run deploy-frontend.sh]
+    
+    %% Post-flight
+    D3 --> F[Run verify-deployment.sh]
+    E1 --> F
 ```
 
 ---
 
-## 5. Pre-Flight Deployment Checklist
+## 6. Pre-Flight Deployment Checklist
 
+- [ ] **Config Check**: Ensure `.env.aws` contains correct account parameters.
 - [ ] **Secret Validation**: Ensure all production databases, API keys, and JWT keys are active inside AWS Secrets Manager.
-- [ ] **Prisma Migration**: Run `npx prisma db push` or equivalent container migration task on RDS before updating the ECS task.
+- [ ] **ECR Prep**: Run `bash scripts/aws/create-ecr.sh` to ensure target ECR repository exists.
+- [ ] **Database Connectivity**: Verify you can resolve host routes to RDS or set up security parameters for ECS-based migration tasks.
 - [ ] **OIDC IAM Role**: Verify GitHub Actions repository has IAM permissions to assume the deployer role in AWS.
 - [ ] **DNS Mapping**: Confirm Route 53 domain pointers are successfully mapped to the CloudFront CDN endpoint.
 - [ ] **AWS Budget Alerts**: Configure budget monitors on the AWS account to prevent cost spikes.
 
 ---
 
-## 6. Deployment Rollback Checklist
+## 7. Deployment Rollback Checklist
 
-If a deployment fails, exhibits degraded health metrics, or fails to start, follow this procedure:
+If a deployment fails, exhibits degraded health metrics, or fails to pass the `verify-deployment.sh` validation checks, follow this procedure:
 
 ### Backend Service Rollback
-1.  Navigate to **AWS ECS Console** > **CalTrack Cluster** > **API Service**.
-2.  Update the service to use the previous stable task definition revision (e.g. change task definition parameter from `caltrack-api:15` to `caltrack-api:14`).
-3.  Force a new deployment. ECS Fargate will spin up tasks running the stable image, verify health status, and gracefully terminate the degraded tasks.
+1. Navigate to **AWS ECS Console** > **CalTrack Cluster** > **API Service**.
+2. Update the service to use the previous stable task definition revision (e.g. change task definition parameter from `caltrack-api:15` to `caltrack-api:14`).
+3. Force a new deployment. ECS Fargate will spin up tasks running the stable image, verify health status, and gracefully terminate the degraded tasks.
 
 ### Frontend Static Rollback
-1.  Navigate to the local build directory or GitHub Actions artifacts to locate the previous stable build zip.
-2.  Clear the S3 bucket assets: `aws s3 rm s3://caltrack-prod-assets/ --recursive`.
-3.  Upload the previous stable build to S3: `aws s3 cp dist/ s3://caltrack-prod-assets/ --recursive`.
-4.  Create a CloudFront invalidation path `/*` to clear Edge caches: `aws cloudfront create-invalidation --distribution-id <id> --paths "/*"`.
+1. Navigate to the local build directory or GitHub Actions artifacts to locate the previous stable build zip.
+2. Clear the S3 bucket assets:
+   ```bash
+   aws s3 rm s3://caltrack-prod-assets/ --recursive
+   ```
+3. Upload the previous stable build to S3:
+   ```bash
+   aws s3 cp dist/ s3://caltrack-prod-assets/ --recursive
+   ```
+4. Create a CloudFront invalidation path `/*` to clear Edge caches:
+   ```bash
+   aws cloudfront create-invalidation --distribution-id <id> --paths "/*"
+   ```
