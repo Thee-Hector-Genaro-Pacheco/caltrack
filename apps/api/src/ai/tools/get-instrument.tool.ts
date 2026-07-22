@@ -1,5 +1,5 @@
-import { getInstrumentById, getInstrumentByTagNumber } from "../../../apps/api/src/services/instrument.service";
-import { Tool, ToolRequest, ToolResponse } from "../types/tool";
+import { getInstrumentById, getInstrumentByTagNumber } from "../../services/instrument.service";
+import { Tool, ToolRequest, ToolResponse } from '@caltrack/ai';
 
 export class GetInstrumentTool implements Tool {
   readonly name = "getInstrument";

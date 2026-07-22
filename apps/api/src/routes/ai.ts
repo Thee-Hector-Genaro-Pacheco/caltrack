@@ -2,9 +2,18 @@ import { Router, Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import * as calibrationPrepService from '../services/calibrationPrep.service';
 import { AIEngine } from '@caltrack/ai';
+import { GetInstrumentTool } from '../ai/tools/get-instrument.tool';
+import { GetCalibrationHistoryTool } from '../ai/tools/get-calibration-history.tool';
+import { SearchReferenceStandardTool } from '../ai/tools/search-reference-standard.tool';
+import { SearchDocumentationTool } from '../ai/tools/search-documentation.tool';
 
 // Instantiate and initialize the CalTrack AI engine
-const aiEngine = new AIEngine();
+const aiEngine = new AIEngine([
+  new GetInstrumentTool(),
+  new GetCalibrationHistoryTool(),
+  new SearchReferenceStandardTool(),
+  new SearchDocumentationTool(),
+]);
 aiEngine.initialize();
 
 const router = Router();

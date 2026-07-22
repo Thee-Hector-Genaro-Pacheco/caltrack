@@ -1,10 +1,6 @@
-import { GetCalibrationHistoryTool } from "../tools/get-calibration-history.tool";
-import { GetInstrumentTool } from "../tools/get-instrument.tool";
-import { SearchReferenceStandardTool } from "../tools/search-reference-standard.tool";
-import { SearchDocumentationTool } from "../tools/search-documentation.tool";
 import { AgentRegistry } from "./registry";
 import { ToolRegistry } from "./tool-registry";
-
+import { Tool } from "../types/tool";
 
 import { SupervisorAgent } from "../agents/supervisor";
 import { CalibrationAgent } from "../agents/calibration";
@@ -18,19 +14,21 @@ export class AIEngine {
   readonly agents: AgentRegistry;
   readonly tools: ToolRegistry;
 
-  constructor() {
+  private readonly externalTools: Tool[];
+
+  constructor(externalTools: Tool[] = []) {
     this.agents = new AgentRegistry();
     this.tools = new ToolRegistry();
+    this.externalTools = externalTools;
   }
 
   initialize(): void {
-    // 1. Register Tools
-    this.tools.register(new GetInstrumentTool());
-    this.tools.register(new GetCalibrationHistoryTool());
-    this.tools.register(new SearchReferenceStandardTool());
-    this.tools.register(new SearchDocumentationTool());
+    // Database-backed tools are supplied by the API layer.
+    for (const tool of this.externalTools) {
+      this.tools.register(tool);
+    }
 
-    // 2. Register Subagents
+    // Register subagents.
     this.agents.register(new CalibrationAgent());
     this.agents.register(new DocumentationAgent(this.tools));
     this.agents.register(new MetrologyAgent());
@@ -38,7 +36,7 @@ export class AIEngine {
     this.agents.register(new QAAgent());
     this.agents.register(new ReportingAgent());
 
-    // 3. Register Supervisor Agent (passes registries for coordination)
+    // Register supervisor agent.
     this.agents.register(new SupervisorAgent(this.agents, this.tools));
 
     console.log("🚀 CalTrack AI Engine initialized.");

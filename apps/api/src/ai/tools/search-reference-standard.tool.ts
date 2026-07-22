@@ -1,5 +1,5 @@
-import { getAllReferenceStandards } from "../../../apps/api/src/services/referenceStandard.service";
-import { Tool, ToolRequest, ToolResponse } from "../types/tool";
+import { getAllReferenceStandards } from "../../services/referenceStandard.service";
+import { Tool, ToolRequest, ToolResponse } from '@caltrack/ai';
 
 export class SearchReferenceStandardTool implements Tool {
   readonly name = "searchReferenceStandard";

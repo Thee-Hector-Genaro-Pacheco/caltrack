@@ -1,5 +1,5 @@
-import { searchDocumentation } from "../../../apps/api/src/services/documentation.service";
-import { Tool, ToolRequest, ToolResponse } from "../types/tool";
+import { searchDocumentation } from "../../services/documentation.service";
+import { Tool, ToolRequest, ToolResponse } from '@caltrack/ai';
 
 export class SearchDocumentationTool implements Tool {
   readonly name = "searchDocumentation";

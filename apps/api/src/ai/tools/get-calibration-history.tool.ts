@@ -1,5 +1,5 @@
-import { getCalibrationHistoryByInstrumentId } from "../../../apps/api/src/services/instrument.service";
-import { Tool, ToolRequest, ToolResponse } from "../types/tool";
+import { getCalibrationHistoryByInstrumentId } from "../../services/instrument.service";
+import { Tool, ToolRequest, ToolResponse } from '@caltrack/ai';
 
 export class GetCalibrationHistoryTool implements Tool {
   readonly name = "getCalibrationHistory";

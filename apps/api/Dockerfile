@@ -2,6 +2,8 @@
 # Stage 1: Build the workspace
 FROM node:20-alpine AS builder
 
+RUN apk add --no-cache openssl
+
 WORKDIR /usr/src/app
 
 # Copy root configurations and lockfiles
@@ -21,6 +23,8 @@ RUN npm run build --workspace=@caltrack/api
 
 # Stage 2: Production execution
 FROM node:20-alpine AS runner
+
+RUN apk add --no-cache openssl
 
 WORKDIR /usr/src/app
 
