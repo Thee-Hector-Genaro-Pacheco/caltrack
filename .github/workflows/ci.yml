@@ -29,11 +29,11 @@ jobs:
 
       - name: Run TypeScript Compile Check (tsc --noEmit)
         run: |
-          npx tsc --noEmit --workspace=@caltrack/types
-          npx tsc --noEmit --workspace=@caltrack/utils
-          npx tsc --noEmit --workspace=@caltrack/ai
-          npx tsc --noEmit --workspace=@caltrack/api
-          npx tsc --noEmit --workspace=@caltrack/web
+          npm run build --workspace=@caltrack/types
+          npm run build --workspace=@caltrack/utils
+          npm run build --workspace=@caltrack/ai
+          npm run build --workspace=@caltrack/api
+          npm run build --workspace=@caltrack/web
 
       - name: Build Monorepo Workspaces
         run: npm run build
