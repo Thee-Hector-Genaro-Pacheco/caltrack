@@ -606,8 +606,21 @@ function initializeMockData() {
   }
 }
 
-// Ensure mock registry has data
-initializeMockData();
+// Development environment flag for client-side mock database fallback
+export const ENABLE_MOCK_API =
+  import.meta.env.DEV &&
+  import.meta.env.VITE_ENABLE_MOCK_API === 'true';
+
+if (ENABLE_MOCK_API) {
+  initializeMockData();
+}
+
+export function clearAuthStorage() {
+  localStorage.removeItem('caltrack_token');
+  localStorage.removeItem('caltrack_user');
+  localStorage.removeItem('caltrack_user_email');
+  localStorage.removeItem('caltrack_user_role');
+}
 
 // Mock Accessors
 const getMockInstruments = (): Instrument[] => JSON.parse(localStorage.getItem(MOCK_INSTRUMENTS_KEY) || '[]');
@@ -624,7 +637,7 @@ const saveMockProcessAreas = (data: any[]) => localStorage.setItem(MOCK_PROCESS_
 const saveMockControlLoops = (data: any[]) => localStorage.setItem(MOCK_CONTROL_LOOPS_KEY, JSON.stringify(data));
 const saveMockWorkOrders = (data: any[]) => localStorage.setItem(MOCK_WORK_ORDERS_KEY, JSON.stringify(data));
 
-// Fetch helper with token injection and automatic mock fallback
+// Fetch helper with token injection and strict HTTP error propagation in production
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('caltrack_token');
 
@@ -643,12 +656,33 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     const response = await fetch(endpoint, config);
     if (!response.ok) {
       const errorMsg = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error(errorMsg.error || 'Network response error');
+      const message = errorMsg.error || errorMsg.message || `Request failed with status ${response.status}`;
+
+      if (response.status === 401) {
+        clearAuthStorage();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('unauthorized'));
+        }
+        throw new Error(message || 'Unauthorized: Invalid or expired session token');
+      }
+
+      if (response.status === 403) {
+        throw new Error(message || 'Forbidden: Access denied');
+      }
+
+      if (response.status === 404) {
+        throw new Error(message || 'Not Found');
+      }
+
+      throw new Error(message);
     }
     return await response.json();
-  } catch (error) {
-    console.warn(`Backend connection failed for ${endpoint}. Falling back to client-side database simulation.`, error);
-    return handleMockRequest<T>(endpoint, options);
+  } catch (error: any) {
+    if (ENABLE_MOCK_API) {
+      console.warn(`[DEV MOCK API] Backend connection failed for ${endpoint}. Falling back to client-side database simulation.`, error);
+      return handleMockRequest<T>(endpoint, options);
+    }
+    throw error;
   }
 }
 
