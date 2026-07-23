@@ -231,6 +231,7 @@ enum UserRole {
   QA_REVIEWER
   TECHNICIAN
   METROLOGY_MANAGER
+  DEMO_VIEWER
 }
 
 model User {

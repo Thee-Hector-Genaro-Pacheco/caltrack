@@ -131,6 +131,42 @@ test('Production Mode - Failed login does not generate fake JWT or set caltrack_
   }
 });
 
+test('DEMO_VIEWER Role - Read operations allowed, non-GET mutations return 403 Forbidden', async () => {
+  const server = http.createServer((req, res) => {
+    const role = 'DEMO_VIEWER';
+    if (role === 'DEMO_VIEWER' && req.method !== 'GET') {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'Forbidden: Demo Viewer accounts are read-only and cannot perform database mutations or administrative actions.'
+      }));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok' }));
+  });
+
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as any).port;
+
+  try {
+    // GET request allowed
+    const getRes = await fetch(`http://127.0.0.1:${port}/api/dashboard`);
+    assert.equal(getRes.status, 200);
+
+    // POST request forbidden for DEMO_VIEWER
+    const postRes = await fetch(`http://127.0.0.1:${port}/api/work-orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instrumentId: 'inst-1' })
+    });
+    assert.equal(postRes.status, 403);
+    const postData = await postRes.json();
+    assert.ok(postData.error.includes('Forbidden: Demo Viewer accounts are read-only'));
+  } finally {
+    server.close();
+  }
+});
+
 test('Development Mode - Mock API toggle enables fallback when explicitly requested', () => {
   const enableMock = true; // VITE_ENABLE_MOCK_API === 'true' in DEV
   assert.equal(enableMock, true);

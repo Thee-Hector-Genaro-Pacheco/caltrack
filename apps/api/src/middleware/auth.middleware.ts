@@ -27,6 +27,14 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
       email: decoded.email,
       role: decoded.role,
     };
+
+    // DEMO_VIEWER accounts are strictly read-only and blocked from mutations
+    if (decoded.role === 'DEMO_VIEWER' && req.method !== 'GET') {
+      return res.status(403).json({
+        error: 'Forbidden: Demo Viewer accounts are read-only and cannot perform database mutations or administrative actions.'
+      });
+    }
+
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Unauthorized: Invalid or expired session token' });

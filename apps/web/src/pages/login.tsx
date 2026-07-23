@@ -45,23 +45,24 @@ export const Login: React.FC = () => {
     }
   };
 
-  const handleQuickLogin = (demoEmail: string) => {
+  const handleQuickLogin = (demoEmail: string, pass: string = 'Password123!') => {
     setEmail(demoEmail);
-    setPassword('Password123!');
+    setPassword(pass);
     setError(null);
   };
 
   const demoAccounts = [
-    { email: 'admin@caltrack.com', label: 'Administrator', desc: 'Full registry & standards access' },
-    { email: 'supervisor@caltrack.com', label: 'Supervisor', desc: 'Manage orders and schedules' },
-    { email: 'qa@caltrack.com', label: 'QA Reviewer', desc: 'Approve & reject calibrations' },
-    { email: 'technician@caltrack.com', label: 'Technician', desc: 'Submit calibrations' },
-    { email: 'manager@caltrack.com', label: 'Metrology Mgr', desc: 'NIST standards management' },
+    { email: 'demo@caltrack.com', pass: 'DemoOnly123!', label: 'Demo Viewer', desc: 'Public portfolio read-only access' },
+    { email: 'admin@caltrack.com', pass: 'Password123!', label: 'Administrator', desc: 'Full registry & standards access' },
+    { email: 'supervisor@caltrack.com', pass: 'Password123!', label: 'Supervisor', desc: 'Manage orders and schedules' },
+    { email: 'qa@caltrack.com', pass: 'Password123!', label: 'QA Reviewer', desc: 'Approve & reject calibrations' },
+    { email: 'technician@caltrack.com', pass: 'Password123!', label: 'Technician', desc: 'Submit calibrations' },
+    { email: 'manager@caltrack.com', pass: 'Password123!', label: 'Metrology Mgr', desc: 'NIST standards management' },
   ];
 
   return (
     <div className="min-h-screen bg-[#070b13] flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden">
-      {/* Background industrial gird decorative glows */}
+      {/* Background industrial grid decorative glows */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-500/5 blur-[120px]" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-slate-500/5 blur-[120px]" />
 
@@ -76,6 +77,20 @@ export const Login: React.FC = () => {
           </h1>
           <p className="text-xs text-gray-500">
             Secure Role-Based Access Control and Calibration Audit Logging.
+          </p>
+        </div>
+
+        {/* Public Portfolio Demo Notice Banner */}
+        <div className="bg-gradient-to-r from-indigo-950/40 via-purple-950/30 to-slate-950/40 border border-indigo-500/30 rounded-xl p-3.5 text-xs text-indigo-200 flex flex-col space-y-1">
+          <div className="flex items-center justify-between font-bold text-indigo-300">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Public Demo Account
+            </span>
+            <span className="text-[10px] text-gray-400 font-mono">DEMO_VIEWER</span>
+          </div>
+          <p className="text-[11px] text-gray-300">
+            Email: <code className="text-indigo-300 font-mono font-bold bg-slate-900/60 px-1 py-0.5 rounded">demo@caltrack.com</code> &bull; Password: <code className="text-indigo-300 font-mono font-bold bg-slate-900/60 px-1 py-0.5 rounded">DemoOnly123!</code>
           </p>
         </div>
 
@@ -148,7 +163,7 @@ export const Login: React.FC = () => {
                 <button
                   key={acc.email}
                   type="button"
-                  onClick={() => handleQuickLogin(acc.email)}
+                  onClick={() => handleQuickLogin(acc.email, acc.pass)}
                   className={`flex flex-col text-left p-2.5 rounded-lg border text-xs font-sans transition-all duration-150 ${
                     email === acc.email
                       ? 'bg-indigo-500/10 border-indigo-500 text-white'

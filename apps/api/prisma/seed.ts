@@ -18,64 +18,75 @@ async function main() {
   await prisma.controlLoop.deleteMany({});
   await prisma.processArea.deleteMany({});
 
-  console.log('Seeding enterprise users...');
+  console.log('Seeding enterprise users with idempotent upsert...');
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash('Password123!', salt);
+  const demoPasswordHash = await bcrypt.hash('DemoOnly123!', salt);
 
-  await prisma.user.create({
-    data: {
+  const usersToSeed = [
+    {
+      email: 'demo@caltrack.com',
+      firstName: 'Demo',
+      lastName: 'Viewer',
+      passwordHash: demoPasswordHash,
+      role: 'DEMO_VIEWER' as const,
+    },
+    {
+      email: 'admin@caltrack.com',
       firstName: 'Admin',
       lastName: 'User',
-      email: 'admin@caltrack.com',
       passwordHash,
-      role: 'ADMINISTRATOR',
-      isActive: true,
+      role: 'ADMINISTRATOR' as const,
     },
-  });
-
-  await prisma.user.create({
-    data: {
+    {
+      email: 'supervisor@caltrack.com',
       firstName: 'Marcus',
       lastName: 'Supervisor',
-      email: 'supervisor@caltrack.com',
       passwordHash,
-      role: 'SUPERVISOR',
-      isActive: true,
+      role: 'SUPERVISOR' as const,
     },
-  });
-
-  await prisma.user.create({
-    data: {
+    {
+      email: 'qa@caltrack.com',
       firstName: 'Elena',
       lastName: 'QA',
-      email: 'qa@caltrack.com',
       passwordHash,
-      role: 'QA_REVIEWER',
-      isActive: true,
+      role: 'QA_REVIEWER' as const,
     },
-  });
-
-  await prisma.user.create({
-    data: {
+    {
+      email: 'technician@caltrack.com',
       firstName: 'John',
       lastName: 'Technician',
-      email: 'technician@caltrack.com',
       passwordHash,
-      role: 'TECHNICIAN',
-      isActive: true,
+      role: 'TECHNICIAN' as const,
     },
-  });
-
-  await prisma.user.create({
-    data: {
+    {
+      email: 'manager@caltrack.com',
       firstName: 'Sarah',
       lastName: 'Manager',
-      email: 'manager@caltrack.com',
       passwordHash,
-      role: 'METROLOGY_MANAGER',
-      isActive: true,
+      role: 'METROLOGY_MANAGER' as const,
     },
-  });
+  ];
+
+  for (const u of usersToSeed) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: {
+        firstName: u.firstName,
+        lastName: u.lastName,
+        role: u.role as any,
+        isActive: true,
+      },
+      create: {
+        email: u.email,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        passwordHash: u.passwordHash,
+        role: u.role as any,
+        isActive: true,
+      },
+    });
+  }
 
   console.log('Database cleared. Seeding plant hierarchy...');
 

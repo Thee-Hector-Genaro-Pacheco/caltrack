@@ -444,7 +444,7 @@ export interface InstrumentIntelligenceSummary {
   recommendedAttentionItems: string[];
 }
 
-export type UserRole = 'ADMINISTRATOR' | 'SUPERVISOR' | 'QA_REVIEWER' | 'TECHNICIAN' | 'METROLOGY_MANAGER';
+export type UserRole = 'ADMINISTRATOR' | 'SUPERVISOR' | 'QA_REVIEWER' | 'TECHNICIAN' | 'METROLOGY_MANAGER' | 'DEMO_VIEWER';
 
 export interface User {
   id: string;
