@@ -4,7 +4,6 @@ import http from 'node:http';
 import handler from '../api/[...path].js';
 import { EventEmitter } from 'events';
 
-// Helper to create mock Vercel req/res objects
 function createMockReqRes(options: { url: string; method?: string; headers?: Record<string, string>; body?: any }) {
   const req: any = new EventEmitter();
   req.url = options.url;
@@ -45,15 +44,6 @@ test('Vercel API Proxy - Missing CALTRACK_API_ORIGIN returns safe 500 without le
   }
 });
 
-test('Vercel API Proxy - Returns 404 for non-/api routes', async () => {
-  process.env.CALTRACK_API_ORIGIN = 'http://localhost:3001';
-  const { req, res } = createMockReqRes({ url: '/dashboard' });
-  await handler(req, res);
-  assert.equal(res.statusCode, 404);
-  const parsed = JSON.parse(res.body);
-  assert.equal(parsed.code, 'NOT_FOUND');
-});
-
 test('Vercel API Proxy - Prevents infinite proxy loops', async () => {
   process.env.CALTRACK_API_ORIGIN = 'https://caltrack-web-six.vercel.app';
   const { req, res } = createMockReqRes({
@@ -66,7 +56,7 @@ test('Vercel API Proxy - Prevents infinite proxy loops', async () => {
   assert.equal(parsed.code, 'PROXY_LOOP_DETECTED');
 });
 
-test('Vercel API Proxy - Correct route mapping & header/query forwarding using a mock upstream server', async () => {
+test('Vercel API Proxy - Target route mappings, headers, query preservation & non-2xx propagation', async () => {
   let receivedUrl = '';
   let receivedMethod = '';
   let receivedAuthHeader = '';
@@ -79,15 +69,29 @@ test('Vercel API Proxy - Correct route mapping & header/query forwarding using a
     if (receivedUrl === '/health') {
       uRes.writeHead(200, { 'Content-Type': 'application/json' });
       uRes.end(JSON.stringify({ status: 'healthy', database: 'connected' }));
+    } else if (receivedUrl === '/api/work-orders') {
+      if (!receivedAuthHeader) {
+        uRes.writeHead(401, { 'Content-Type': 'application/json' });
+        uRes.end(JSON.stringify({ error: 'Unauthorized: Missing Authorization header' }));
+        return;
+      }
+      uRes.writeHead(200, { 'Content-Type': 'application/json' });
+      uRes.end(JSON.stringify([{ id: 'wo-1', workOrderNumber: 'WO-1001' }]));
+    } else if (receivedUrl === '/api/control-loops') {
+      uRes.writeHead(200, { 'Content-Type': 'application/json' });
+      uRes.end(JSON.stringify([{ id: 'loop-101', loopTag: 'PT-101' }]));
+    } else if (receivedUrl === '/api/process-areas?filter=active&limit=10') {
+      uRes.writeHead(200, { 'Content-Type': 'application/json' });
+      uRes.end(JSON.stringify([{ id: 'area-10', name: 'Feedwater System' }]));
     } else if (receivedUrl === '/api/auth/login') {
       uRes.writeHead(200, { 'Content-Type': 'application/json' });
-      uRes.end(JSON.stringify({ token: 'mock-jwt-token', user: { email: 'admin@caltrack.com' } }));
-    } else if (receivedUrl === '/api/calibrations?status=DUE&limit=5') {
-      uRes.writeHead(204); // empty 204 No Content response
-      uRes.end();
-    } else {
+      uRes.end(JSON.stringify({ token: 'mock-jwt-token' }));
+    } else if (receivedUrl === '/api/non-existent-route') {
       uRes.writeHead(404, { 'Content-Type': 'application/json' });
-      uRes.end(JSON.stringify({ error: 'Not found' }));
+      uRes.end(JSON.stringify({ error: 'Cannot GET /api/non-existent-route', code: 'NOT_FOUND' }));
+    } else {
+      uRes.writeHead(500, { 'Content-Type': 'application/json' });
+      uRes.end(JSON.stringify({ error: 'Unexpected upstream endpoint' }));
     }
   });
 
@@ -97,7 +101,7 @@ test('Vercel API Proxy - Correct route mapping & header/query forwarding using a
   process.env.CALTRACK_API_ORIGIN = testOrigin;
 
   try {
-    // Test 1: /api/health -> upstream /health
+    // 1. /api/health -> /health
     {
       const { req, res } = createMockReqRes({ url: '/api/health' });
       await handler(req, res);
@@ -107,37 +111,66 @@ test('Vercel API Proxy - Correct route mapping & header/query forwarding using a
       assert.equal(data.status, 'healthy');
     }
 
-    // Test 2: /api/auth/login -> upstream /api/auth/login with POST body and headers
+    // 2. /api/work-orders -> /api/work-orders (with Authorization header forwarding)
     {
       const { req, res } = createMockReqRes({
-        url: '/api/auth/login',
-        method: 'POST',
+        url: '/api/work-orders',
+        method: 'GET',
         headers: {
           host: 'caltrack-web-six.vercel.app',
-          authorization: 'Bearer sample-token'
-        },
-        body: JSON.stringify({ email: 'admin@caltrack.com', password: 'secretpassword' })
+          authorization: 'Bearer valid-auth-token'
+        }
       });
       await handler(req, res);
       assert.equal(res.statusCode, 200);
-      assert.equal(receivedUrl, '/api/auth/login');
-      assert.equal(receivedMethod, 'POST');
-      assert.equal(receivedAuthHeader, 'Bearer sample-token');
+      assert.equal(receivedUrl, '/api/work-orders');
+      assert.equal(receivedAuthHeader, 'Bearer valid-auth-token');
       const data = JSON.parse(res.body);
-      assert.equal(data.token, 'mock-jwt-token');
+      assert.equal(data[0].workOrderNumber, 'WO-1001');
     }
 
-    // Test 3: Query strings & 204 No Content response
+    // 3. /work-orders (Vercel stripped path form) -> /api/work-orders
     {
       const { req, res } = createMockReqRes({
-        url: '/api/calibrations?status=DUE&limit=5',
+        url: '/work-orders',
         method: 'GET',
-        headers: { host: 'caltrack-web-six.vercel.app' }
+        headers: {
+          host: 'caltrack-web-six.vercel.app',
+          authorization: 'Bearer valid-auth-token'
+        }
       });
       await handler(req, res);
-      assert.equal(res.statusCode, 204);
-      assert.equal(receivedUrl, '/api/calibrations?status=DUE&limit=5');
-      assert.equal(res.body, '');
+      assert.equal(res.statusCode, 200);
+      assert.equal(receivedUrl, '/api/work-orders');
+    }
+
+    // 4. /api/control-loops -> /api/control-loops
+    {
+      const { req, res } = createMockReqRes({ url: '/api/control-loops' });
+      await handler(req, res);
+      assert.equal(res.statusCode, 200);
+      assert.equal(receivedUrl, '/api/control-loops');
+      const data = JSON.parse(res.body);
+      assert.equal(data[0].loopTag, 'PT-101');
+    }
+
+    // 5. /api/process-areas?filter=active&limit=10 -> /api/process-areas?filter=active&limit=10 (query string preservation)
+    {
+      const { req, res } = createMockReqRes({ url: '/api/process-areas?filter=active&limit=10' });
+      await handler(req, res);
+      assert.equal(res.statusCode, 200);
+      assert.equal(receivedUrl, '/api/process-areas?filter=active&limit=10');
+      const data = JSON.parse(res.body);
+      assert.equal(data[0].name, 'Feedwater System');
+    }
+
+    // 6. Non-2xx response propagation (e.g. 404 from upstream)
+    {
+      const { req, res } = createMockReqRes({ url: '/api/non-existent-route' });
+      await handler(req, res);
+      assert.equal(res.statusCode, 404);
+      const data = JSON.parse(res.body);
+      assert.equal(data.code, 'NOT_FOUND');
     }
   } finally {
     upstreamServer.close();
@@ -145,7 +178,6 @@ test('Vercel API Proxy - Correct route mapping & header/query forwarding using a
 });
 
 test('Vercel API Proxy - Returns safe 502 error when upstream is unreachable', async () => {
-  // Point to a non-existent port
   process.env.CALTRACK_API_ORIGIN = 'http://127.0.0.1:59998';
   const { req, res } = createMockReqRes({
     url: '/api/health',

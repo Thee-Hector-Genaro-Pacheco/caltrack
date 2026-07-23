@@ -32,27 +32,34 @@ export default async function handler(req: ExtendedRequest, res: ServerResponse)
     return;
   }
 
-  // Ensure request URL starts with /api
-  const requestUrl = req.url || '';
-  if (!requestUrl.startsWith('/api')) {
-    res.statusCode = 404;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({
-      error: 'Not Found: Only /api routes are proxied.',
-      code: 'NOT_FOUND'
-    }));
-    return;
-  }
+  const requestUrl = req.url || '/';
 
-  // Path mapping:
-  // /api/health -> /health (Express health endpoint is mounted at /health)
-  // All other /api/* routes preserve /api/* prefix matching Express route mounts (/api/auth, /api/instruments, etc.)
-  let targetPath = requestUrl;
-  if (requestUrl === '/api/health' || requestUrl.startsWith('/api/health?')) {
-    targetPath = requestUrl.replace(/^\/api\/health/, '/health');
+  // Determine correct target path for Express backend
+  let targetPath = '';
+  if (
+    requestUrl === '/health' ||
+    requestUrl.startsWith('/health?') ||
+    requestUrl === '/api/health' ||
+    requestUrl.startsWith('/api/health?')
+  ) {
+    // Health endpoint is mounted at /health in Express
+    const queryString = requestUrl.includes('?') ? requestUrl.substring(requestUrl.indexOf('?')) : '';
+    targetPath = `/health${queryString}`;
+  } else {
+    // All other Express routes are mounted under /api/ (e.g. /api/work-orders, /api/control-loops, /api/process-areas)
+    if (requestUrl.startsWith('/api/')) {
+      targetPath = requestUrl;
+    } else {
+      const cleanPath = requestUrl.startsWith('/') ? requestUrl : `/${requestUrl}`;
+      targetPath = `/api${cleanPath}`;
+    }
   }
 
   const targetUrl = `${origin}${targetPath}`;
+  const method = (req.method || 'GET').toUpperCase();
+
+  // Safe diagnostic log (Task 5: proxy path, upstream URL without secrets, no headers/tokens)
+  console.log(`[Vercel Proxy] Request: ${method} ${requestUrl} -> Upstream: ${targetUrl}`);
 
   // Hop-by-hop headers to omit
   const hopByHopHeaders = new Set([
@@ -75,7 +82,6 @@ export default async function handler(req: ExtendedRequest, res: ServerResponse)
     }
   }
 
-  const method = (req.method || 'GET').toUpperCase();
   let requestBody: string | Buffer | undefined = undefined;
 
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
@@ -105,6 +111,9 @@ export default async function handler(req: ExtendedRequest, res: ServerResponse)
 
     const upstreamResponse = await fetch(targetUrl, fetchOptions);
 
+    // Safe diagnostic log of response status
+    console.log(`[Vercel Proxy] Response: ${method} ${targetUrl} -> Status ${upstreamResponse.status}`);
+
     res.statusCode = upstreamResponse.status;
 
     upstreamResponse.headers.forEach((val, key) => {
@@ -123,6 +132,7 @@ export default async function handler(req: ExtendedRequest, res: ServerResponse)
     const buffer = Buffer.from(arrayBuffer);
     res.end(buffer);
   } catch (err: any) {
+    console.error(`[Vercel Proxy Error] Failed to reach upstream target ${targetUrl}:`, err.message);
     res.statusCode = 502;
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({
