@@ -92,15 +92,15 @@ export default function Dashboard() {
         <p className="text-gray-400 mt-1">Real-time instrument calibration compliance metrics.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-primary">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Registered</p>
-              <h3 className="text-4xl font-extrabold text-white mt-2">{stats.totalInstruments}</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 sm:gap-6">
+        <div className="glass-card p-4 sm:p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-primary min-w-0">
+          <div className="flex justify-between items-start gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 truncate">Total Registered</p>
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-white mt-2">{stats.totalInstruments}</h3>
             </div>
-            <div className="p-3 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/25">
-              <Database size={24} />
+            <div className="p-2.5 sm:p-3 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/25 shrink-0">
+              <Database size={22} />
             </div>
           </div>
           <div className="mt-4 text-xs text-indigo-300">
@@ -108,14 +108,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-warning">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Calibrations Due</p>
-              <h3 className="text-4xl font-extrabold text-amber-500 mt-2">{stats.calibrationsDue}</h3>
+        <div className="glass-card p-4 sm:p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-warning min-w-0">
+          <div className="flex justify-between items-start gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 truncate">Calibrations Due</p>
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-amber-500 mt-2">{stats.calibrationsDue}</h3>
             </div>
-            <div className="p-3 bg-amber-500/10 rounded-lg text-amber-500 border border-amber-500/25">
-              <Activity size={24} />
+            <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-lg text-amber-500 border border-amber-500/25 shrink-0">
+              <Activity size={22} />
             </div>
           </div>
           <div className="mt-4 text-xs text-amber-400">
@@ -123,14 +123,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Overdue Registry</p>
-              <h3 className="text-4xl font-extrabold text-red-500 mt-2">{stats.overdueInstruments}</h3>
+        <div className="glass-card p-4 sm:p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 min-w-0">
+          <div className="flex justify-between items-start gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 truncate">Overdue Registry</p>
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-red-500 mt-2">{stats.overdueInstruments}</h3>
             </div>
-            <div className="p-3 bg-red-500/10 rounded-lg text-red-500 border border-red-500/25">
-              <AlertTriangle size={24} />
+            <div className="p-2.5 sm:p-3 bg-red-500/10 rounded-lg text-red-500 border border-red-500/25 shrink-0">
+              <AlertTriangle size={22} />
             </div>
           </div>
           <div className="mt-4 text-xs text-red-400">
@@ -138,14 +138,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-primary">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Open Work Orders</p>
-              <h3 className="text-4xl font-extrabold text-indigo-400 mt-2">{stats.openWorkOrders}</h3>
+        <div className="glass-card p-4 sm:p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-primary min-w-0">
+          <div className="flex justify-between items-start gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 truncate">Open Work Orders</p>
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-indigo-400 mt-2">{stats.openWorkOrders}</h3>
             </div>
-            <div className="p-3 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/25">
-              <ClipboardList size={24} />
+            <div className="p-2.5 sm:p-3 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/25 shrink-0">
+              <ClipboardList size={22} />
             </div>
           </div>
           <div className="mt-4 text-xs text-indigo-300">
@@ -153,14 +153,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Process Areas</p>
-              <h3 className="text-4xl font-extrabold text-white mt-2">{stats.totalProcessAreas}</h3>
+        <div className="glass-card p-4 sm:p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 min-w-0">
+          <div className="flex justify-between items-start gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 truncate">Process Areas</p>
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-white mt-2">{stats.totalProcessAreas}</h3>
             </div>
-            <div className="p-3 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/25">
-              <Layers size={24} />
+            <div className="p-2.5 sm:p-3 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/25 shrink-0">
+              <Layers size={22} />
             </div>
           </div>
           <div className="mt-4 text-xs text-indigo-300">
@@ -168,14 +168,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Control Loops</p>
-              <h3 className="text-4xl font-extrabold text-white mt-2">{stats.totalControlLoops}</h3>
+        <div className="glass-card p-4 sm:p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 min-w-0">
+          <div className="flex justify-between items-start gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 truncate">Control Loops</p>
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-white mt-2">{stats.totalControlLoops}</h3>
             </div>
-            <div className="p-3 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/25">
-              <RefreshCw size={24} />
+            <div className="p-2.5 sm:p-3 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/25 shrink-0">
+              <RefreshCw size={22} />
             </div>
           </div>
           <div className="mt-4 text-xs text-indigo-300">
@@ -192,15 +192,15 @@ export default function Dashboard() {
         <p className="text-gray-400 text-xs mt-0.5">Reference standards status and equipment certification tracking</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-primary">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Reference Standards</p>
-              <h3 className="text-4xl font-extrabold text-white mt-2">{stats.totalReferenceStandards}</h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        <div className="glass-card p-4 sm:p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-primary min-w-0">
+          <div className="flex justify-between items-start gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 truncate">Total Reference Standards</p>
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-white mt-2">{stats.totalReferenceStandards}</h3>
             </div>
-            <div className="p-3 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/25">
-              <Award size={24} />
+            <div className="p-2.5 sm:p-3 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/25 shrink-0">
+              <Award size={22} />
             </div>
           </div>
           <div className="mt-4 text-xs text-indigo-300">
@@ -208,14 +208,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-warning">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Standards Due Soon</p>
-              <h3 className="text-4xl font-extrabold text-amber-500 mt-2">{stats.standardsDueSoon}</h3>
+        <div className="glass-card p-4 sm:p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-warning min-w-0">
+          <div className="flex justify-between items-start gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 truncate">Standards Due Soon</p>
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-amber-500 mt-2">{stats.standardsDueSoon}</h3>
             </div>
-            <div className="p-3 bg-amber-500/10 rounded-lg text-amber-500 border border-amber-500/25">
-              <AlertTriangle size={24} />
+            <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-lg text-amber-500 border border-amber-500/25 shrink-0">
+              <AlertTriangle size={22} />
             </div>
           </div>
           <div className="mt-4 text-xs text-amber-400">
@@ -223,14 +223,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-danger">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Expired Standards</p>
-              <h3 className="text-4xl font-extrabold text-red-500 mt-2">{stats.expiredStandards}</h3>
+        <div className="glass-card p-4 sm:p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-danger min-w-0">
+          <div className="flex justify-between items-start gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 truncate">Expired Standards</p>
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-red-500 mt-2">{stats.expiredStandards}</h3>
             </div>
-            <div className="p-3 bg-red-500/10 rounded-lg text-red-500 border border-red-500/25">
-              <XCircle size={24} />
+            <div className="p-2.5 sm:p-3 bg-red-500/10 rounded-lg text-red-500 border border-red-500/25 shrink-0">
+              <XCircle size={22} />
             </div>
           </div>
           <div className="mt-4 text-xs text-red-400">
@@ -247,23 +247,23 @@ export default function Dashboard() {
         <p className="text-gray-400 text-xs mt-0.5">Electronic signatures review status queue</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className={`glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 ${
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        <div className={`glass-card p-4 sm:p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 min-w-0 ${
           stats.pendingReviews > 0 ? 'glow-warning border-amber-500/20 bg-amber-500/[0.02]' : ''
         }`}>
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Pending Review</p>
-              <h3 className={`text-4xl font-extrabold mt-2 ${stats.pendingReviews > 0 ? 'text-amber-500' : 'text-white'}`}>
+          <div className="flex justify-between items-start gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 truncate">Pending Review</p>
+              <h3 className={`text-3xl sm:text-4xl font-extrabold mt-2 ${stats.pendingReviews > 0 ? 'text-amber-500' : 'text-white'}`}>
                 {stats.pendingReviews}
               </h3>
             </div>
-            <div className={`p-3 rounded-lg border ${
+            <div className={`p-2.5 sm:p-3 rounded-lg border shrink-0 ${
               stats.pendingReviews > 0 
                 ? 'bg-amber-500/10 text-amber-500 border-amber-500/25' 
                 : 'bg-slate-800/40 text-gray-400 border-white/5'
             }`}>
-              <Fingerprint size={24} />
+              <Fingerprint size={22} />
             </div>
           </div>
           <div className="mt-4 text-xs text-indigo-300">
@@ -271,14 +271,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-success">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Approved Records</p>
-              <h3 className="text-4xl font-extrabold text-emerald-500 mt-2">{stats.approvedRecords}</h3>
+        <div className="glass-card p-4 sm:p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-success min-w-0">
+          <div className="flex justify-between items-start gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 truncate">Approved Records</p>
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-emerald-500 mt-2">{stats.approvedRecords}</h3>
             </div>
-            <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-500 border border-emerald-500/25">
-              <CheckCircle2 size={24} />
+            <div className="p-2.5 sm:p-3 bg-emerald-500/10 rounded-lg text-emerald-500 border border-emerald-500/25 shrink-0">
+              <CheckCircle2 size={22} />
             </div>
           </div>
           <div className="mt-4 text-xs text-indigo-300">
@@ -286,14 +286,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-danger">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Rejected Records</p>
-              <h3 className="text-4xl font-extrabold text-rose-500 mt-2">{stats.rejectedRecords}</h3>
+        <div className="glass-card p-4 sm:p-6 rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] border border-white/5 glow-danger min-w-0">
+          <div className="flex justify-between items-start gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 truncate">Rejected Records</p>
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-rose-500 mt-2">{stats.rejectedRecords}</h3>
             </div>
-            <div className="p-3 bg-rose-500/10 rounded-lg text-rose-500 border border-rose-500/25">
-              <XCircle size={24} />
+            <div className="p-2.5 sm:p-3 bg-rose-500/10 rounded-lg text-rose-500 border border-rose-500/25 shrink-0">
+              <XCircle size={22} />
             </div>
           </div>
           <div className="mt-4 text-xs text-indigo-300">
@@ -302,12 +302,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 glass-card p-6 rounded-xl border border-white/5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+        <div className="lg:col-span-2 glass-card p-4 sm:p-6 rounded-xl border border-white/5 min-w-0">
           <h3 className="text-lg font-bold text-white mb-4">Compliance Status Distribution</h3>
           
           <div className="flex flex-col sm:flex-row items-center justify-around gap-6 py-6">
-            <div className="relative w-36 h-36 flex items-center justify-center rounded-full border-8 border-gray-800">
+            <div className="relative w-36 h-36 flex items-center justify-center rounded-full border-8 border-gray-800 shrink-0">
               <div className="absolute inset-0 rounded-full border-8 border-t-emerald-500 border-r-emerald-500 border-l-amber-500 border-b-red-500 animate-[spin_10s_linear_infinite] pointer-events-none"></div>
               <div className="text-center z-10">
                 <span className="text-3xl font-extrabold text-white">
@@ -336,7 +336,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-xl border border-white/5 flex flex-col justify-between">
+        <div className="glass-card p-4 sm:p-6 rounded-xl border border-white/5 flex flex-col justify-between min-w-0">
           <div>
             <h3 className="text-lg font-bold text-white mb-2">Technician Actions</h3>
             <p className="text-xs text-gray-400 mb-6">Quick shortcuts to common registry updates.</p>
@@ -365,11 +365,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-
-      
       {/* PREDICTIVE RISK ALERTING CARD */}
-      <div className="glass-card p-6 rounded-xl border border-white/5">
-        <div className="flex justify-between items-center mb-6">
+      <div className="glass-card p-4 sm:p-6 rounded-xl border border-white/5 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <BrainCircuit className="text-indigo-400" size={20} />
@@ -377,7 +375,7 @@ export default function Dashboard() {
             </h3>
             <p className="text-xs text-gray-400 mt-1">Surfacing high-risk calibration gaps and trend vectors before failure occurs.</p>
           </div>
-          <span className="px-2.5 py-0.5 rounded text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/25 font-bold uppercase tracking-wider">
+          <span className="self-start sm:self-auto px-2.5 py-0.5 rounded text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/25 font-bold uppercase tracking-wider shrink-0">
             AI ML-Assisted
           </span>
         </div>
@@ -392,8 +390,8 @@ export default function Dashboard() {
             No active validation risk alarms or high drift deviations registered in the facility.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto w-full max-w-full">
+            <table className="w-full text-left border-collapse min-w-[600px]">
               <thead>
                 <tr className="border-b border-gray-800 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                   <th className="py-3 px-4">Tag Number</th>
@@ -443,7 +441,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div className="glass-card p-6 rounded-xl border border-white/5">
+      <div className="glass-card p-4 sm:p-6 rounded-xl border border-white/5 min-w-0">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-bold text-white">Recent Audit Activity</h3>
           <Link to="/audit" className="text-xs text-indigo-400 hover:underline">View full trail →</Link>
@@ -452,8 +450,8 @@ export default function Dashboard() {
         {stats.recentAuditActivity.length === 0 ? (
           <div className="text-center py-8 text-gray-500 text-sm">No recent modifications logged.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto w-full max-w-full">
+            <table className="w-full text-left border-collapse min-w-[600px]">
               <thead>
                 <tr className="border-b border-gray-800 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                   <th className="py-3 px-4">Timestamp</th>
@@ -489,3 +487,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

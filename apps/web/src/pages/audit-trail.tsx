@@ -90,8 +90,8 @@ export default function AuditTrail() {
         </div>
       ) : (
         <div className="glass-card rounded-xl border border-white/5 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto w-full max-w-full">
+            <table className="w-full text-left border-collapse min-w-[650px]">
               <thead>
                 <tr className="border-b border-gray-800 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-slate-900/30">
                   <th className="py-3 px-6">Timestamp</th>
