@@ -83,9 +83,6 @@ test('Vercel API Proxy - Target route mappings, headers, query preservation & no
     } else if (receivedUrl === '/api/process-areas?filter=active&limit=10') {
       uRes.writeHead(200, { 'Content-Type': 'application/json' });
       uRes.end(JSON.stringify([{ id: 'area-10', name: 'Feedwater System' }]));
-    } else if (receivedUrl === '/api/auth/login') {
-      uRes.writeHead(200, { 'Content-Type': 'application/json' });
-      uRes.end(JSON.stringify({ token: 'mock-jwt-token' }));
     } else if (receivedUrl === '/api/non-existent-route') {
       uRes.writeHead(404, { 'Content-Type': 'application/json' });
       uRes.end(JSON.stringify({ error: 'Cannot GET /api/non-existent-route', code: 'NOT_FOUND' }));
@@ -154,7 +151,7 @@ test('Vercel API Proxy - Target route mappings, headers, query preservation & no
       assert.equal(data[0].loopTag, 'PT-101');
     }
 
-    // 5. /api/process-areas?filter=active&limit=10 -> /api/process-areas?filter=active&limit=10 (query string preservation)
+    // 5. /api/process-areas?filter=active&limit=10 -> /api/process-areas?filter=active&limit=10
     {
       const { req, res } = createMockReqRes({ url: '/api/process-areas?filter=active&limit=10' });
       await handler(req, res);
@@ -171,6 +168,102 @@ test('Vercel API Proxy - Target route mappings, headers, query preservation & no
       assert.equal(res.statusCode, 404);
       const data = JSON.parse(res.body);
       assert.equal(data.code, 'NOT_FOUND');
+    }
+  } finally {
+    upstreamServer.close();
+  }
+});
+
+test('Vercel API Proxy - Explicit POST /api/auth/login & /auth/login body forwarding, Content-Type, & status preservation', async () => {
+  let lastUrl = '';
+  let lastContentType = '';
+  let lastBody = '';
+
+  const upstreamServer = http.createServer((uReq, uRes) => {
+    lastUrl = uReq.url || '';
+    lastContentType = uReq.headers['content-type'] || '';
+    let bodyChunks: Buffer[] = [];
+    uReq.on('data', chunk => bodyChunks.push(chunk));
+    uReq.on('end', () => {
+      lastBody = Buffer.concat(bodyChunks).toString('utf8');
+      const parsed = JSON.parse(lastBody || '{}');
+
+      if (parsed.email === 'admin@caltrack.com' && parsed.password === 'validPass') {
+        uRes.writeHead(200, { 'Content-Type': 'application/json' });
+        uRes.end(JSON.stringify({ token: 'jwt-auth-token-xyz', user: { email: parsed.email } }));
+      } else if (parsed.email === 'invalid@caltrack.com') {
+        uRes.writeHead(401, { 'Content-Type': 'application/json' });
+        uRes.end(JSON.stringify({ error: 'Invalid credentials' }));
+      } else {
+        uRes.writeHead(404, { 'Content-Type': 'application/json' });
+        uRes.end(JSON.stringify({ error: 'Auth route not found' }));
+      }
+    });
+  });
+
+  await new Promise<void>((resolve) => upstreamServer.listen(0, '127.0.0.1', resolve));
+  const address: any = upstreamServer.address();
+  process.env.CALTRACK_API_ORIGIN = `http://127.0.0.1:${address.port}`;
+
+  try {
+    // A. POST /api/auth/login forwards body & Content-Type correctly -> /api/auth/login
+    {
+      const payload = { email: 'admin@caltrack.com', password: 'validPass' };
+      const { req, res } = createMockReqRes({
+        url: '/api/auth/login',
+        method: 'POST',
+        headers: {
+          host: 'caltrack-web-six.vercel.app',
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      await handler(req, res);
+      assert.equal(res.statusCode, 200);
+      assert.equal(lastUrl, '/api/auth/login');
+      assert.equal(lastContentType, 'application/json');
+      assert.equal(lastBody, JSON.stringify(payload));
+      const resData = JSON.parse(res.body);
+      assert.equal(resData.token, 'jwt-auth-token-xyz');
+    }
+
+    // B. POST /auth/login (Vercel stripped path form) -> /api/auth/login
+    {
+      const payload = { email: 'admin@caltrack.com', password: 'validPass' };
+      const { req, res } = createMockReqRes({
+        url: '/auth/login',
+        method: 'POST',
+        headers: {
+          host: 'caltrack-web-six.vercel.app',
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      await handler(req, res);
+      assert.equal(res.statusCode, 200);
+      assert.equal(lastUrl, '/api/auth/login');
+      assert.equal(lastBody, JSON.stringify(payload));
+    }
+
+    // C. Upstream 401 status preservation on invalid credentials
+    {
+      const payload = { email: 'invalid@caltrack.com', password: 'wrong' };
+      const { req, res } = createMockReqRes({
+        url: '/api/auth/login',
+        method: 'POST',
+        headers: {
+          host: 'caltrack-web-six.vercel.app',
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      await handler(req, res);
+      assert.equal(res.statusCode, 401);
+      const resData = JSON.parse(res.body);
+      assert.equal(resData.error, 'Invalid credentials');
     }
   } finally {
     upstreamServer.close();
