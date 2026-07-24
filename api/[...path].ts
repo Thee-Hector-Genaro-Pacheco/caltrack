@@ -8,8 +8,8 @@ interface ExtendedRequest extends IncomingMessage {
 
 export default async function handler(req: ExtendedRequest, res: ServerResponse) {
   let rawOrigin = process.env.CALTRACK_API_ORIGIN;
-  if (!rawOrigin || !rawOrigin.trim() || rawOrigin.includes('3.18.108.1')) {
-    rawOrigin = 'http://18.116.73.123:3001';
+  if (!rawOrigin || !rawOrigin.trim() || rawOrigin.includes('3.18.108.1') || rawOrigin.includes('18.116.73.123')) {
+    rawOrigin = 'http://18.217.40.35:3001';
   }
 
   const origin = rawOrigin.trim().replace(/\/+$/, '');
