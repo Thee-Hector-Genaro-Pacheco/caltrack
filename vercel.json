@@ -2,8 +2,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
+      "source": "/api/health",
+      "destination": "http://18.116.73.123:3001/health"
+    },
+    {
       "source": "/api/:path*",
-      "destination": "/api/[...path]"
+      "destination": "http://18.116.73.123:3001/api/:path*"
     },
     {
       "source": "/((?!api/).*)",
