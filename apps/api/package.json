@@ -11,7 +11,10 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "db:seed": "prisma db seed",
-    "db:seed:demo:production": "tsx prisma/seed-demo-production.ts"
+    "db:seed:demo:production": "tsx prisma/seed-demo-production.ts",
+    "db:seed:demo-users:production": "tsx prisma/seed-demo-users-production.ts",
+    "db:seed:demo-data:production": "tsx prisma/seed-demo-data-production.ts",
+    "db:remove:demo:production": "tsx prisma/remove-demo-production.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
