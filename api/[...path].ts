@@ -14,7 +14,7 @@ export default async function handler(req: ExtendedRequest, res: ServerResponse)
 
   const origin = rawOrigin.trim().replace(/\/+$/, '');
 
-  // Prevent infinite loop if CALTRACK_API_ORIGIN points to self/Vercel frontend domain
+  // Prevent infinite loop if CALTRACK_API_ORIGIN points to self
   const host = req.headers.host || '';
   if (host && origin.includes(host)) {
     res.statusCode = 500;
@@ -36,11 +36,9 @@ export default async function handler(req: ExtendedRequest, res: ServerResponse)
     requestUrl === '/api/health' ||
     requestUrl.startsWith('/api/health?')
   ) {
-    // Health endpoint is mounted at /health in Express
     const queryString = requestUrl.includes('?') ? requestUrl.substring(requestUrl.indexOf('?')) : '';
     targetPath = `/health${queryString}`;
   } else {
-    // All other Express routes are mounted under /api/ (e.g. /api/work-orders, /api/control-loops, /api/process-areas)
     if (requestUrl.startsWith('/api/')) {
       targetPath = requestUrl;
     } else {
@@ -52,10 +50,8 @@ export default async function handler(req: ExtendedRequest, res: ServerResponse)
   const targetUrl = `${origin}${targetPath}`;
   const method = (req.method || 'GET').toUpperCase();
 
-  // Safe diagnostic log (Task 5: proxy path, upstream URL without secrets, no headers/tokens)
   console.log(`[Vercel Proxy] Request: ${method} ${requestUrl} -> Upstream: ${targetUrl}`);
 
-  // Hop-by-hop headers to omit
   const hopByHopHeaders = new Set([
     'connection',
     'keep-alive',
@@ -85,13 +81,17 @@ export default async function handler(req: ExtendedRequest, res: ServerResponse)
       } else {
         requestBody = JSON.stringify(req.body);
       }
-    } else {
-      const chunks: Buffer[] = [];
-      for await (const chunk of req) {
-        chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
-      }
-      if (chunks.length > 0) {
-        requestBody = Buffer.concat(chunks);
+    } else if (typeof (req as any).on === 'function') {
+      try {
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) {
+          chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+        }
+        if (chunks.length > 0) {
+          requestBody = Buffer.concat(chunks);
+        }
+      } catch (e) {
+        // Stream not readable or already consumed
       }
     }
   }
@@ -105,7 +105,6 @@ export default async function handler(req: ExtendedRequest, res: ServerResponse)
 
     const upstreamResponse = await fetch(targetUrl, fetchOptions);
 
-    // Safe diagnostic log of response status
     console.log(`[Vercel Proxy] Response: ${method} ${targetUrl} -> Status ${upstreamResponse.status}`);
 
     res.statusCode = upstreamResponse.status;
