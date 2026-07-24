@@ -7,15 +7,9 @@ interface ExtendedRequest extends IncomingMessage {
 }
 
 export default async function handler(req: ExtendedRequest, res: ServerResponse) {
-  const rawOrigin = process.env.CALTRACK_API_ORIGIN;
-  if (!rawOrigin || !rawOrigin.trim()) {
-    res.statusCode = 500;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({
-      error: 'Server configuration error: CALTRACK_API_ORIGIN environment variable is required.',
-      code: 'MISSING_API_ORIGIN'
-    }));
-    return;
+  let rawOrigin = process.env.CALTRACK_API_ORIGIN;
+  if (!rawOrigin || !rawOrigin.trim() || rawOrigin.includes('3.18.108.1')) {
+    rawOrigin = 'http://18.116.73.123:3001';
   }
 
   const origin = rawOrigin.trim().replace(/\/+$/, '');
