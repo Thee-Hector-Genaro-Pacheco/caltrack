@@ -36,3 +36,5 @@ pnpm-debug.log*
 *.sw?
 .vercel
 .env*
+*.local.txt
+.production-demo-credentials.local.txt
