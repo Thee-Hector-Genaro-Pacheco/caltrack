@@ -171,3 +171,58 @@ test('Development Mode - Mock API toggle enables fallback when explicitly reques
   const enableMock = true; // VITE_ENABLE_MOCK_API === 'true' in DEV
   assert.equal(enableMock, true);
 });
+
+test('Frontend Demo Role Presets - Single Source of Truth & Safe Password Policy', async () => {
+  const { DEMO_ROLE_PRESETS } = await import('../apps/web/src/config/demo-presets.js');
+
+  assert.equal(DEMO_ROLE_PRESETS.length, 6);
+
+  // 1. Demo Viewer
+  const demoViewer = DEMO_ROLE_PRESETS.find(p => p.role === 'DEMO_VIEWER');
+  assert.ok(demoViewer);
+  assert.equal(demoViewer.email, 'demo@caltrack.com');
+  assert.equal(demoViewer.publicPassword, 'DemoOnly123!');
+
+  // 2. Administrator
+  const admin = DEMO_ROLE_PRESETS.find(p => p.role === 'ADMINISTRATOR');
+  assert.ok(admin);
+  assert.equal(admin.email, 'admin.demo@caltrack.com');
+  assert.equal(admin.publicPassword, undefined);
+
+  // 3. Supervisor
+  const supervisor = DEMO_ROLE_PRESETS.find(p => p.role === 'SUPERVISOR');
+  assert.ok(supervisor);
+  assert.equal(supervisor.email, 'supervisor.demo@caltrack.com');
+  assert.equal(supervisor.publicPassword, undefined);
+
+  // 4. QA Reviewer
+  const qa = DEMO_ROLE_PRESETS.find(p => p.role === 'QA_REVIEWER');
+  assert.ok(qa);
+  assert.equal(qa.email, 'qa.demo@caltrack.com');
+  assert.equal(qa.publicPassword, undefined);
+
+  // 5. Technician
+  const tech = DEMO_ROLE_PRESETS.find(p => p.role === 'TECHNICIAN');
+  assert.ok(tech);
+  assert.equal(tech.email, 'technician.demo@caltrack.com');
+  assert.equal(tech.publicPassword, undefined);
+
+  // 6. Metrology Manager
+  const manager = DEMO_ROLE_PRESETS.find(p => p.role === 'METROLOGY_MANAGER');
+  assert.ok(manager);
+  assert.equal(manager.email, 'manager.demo@caltrack.com');
+  assert.equal(manager.publicPassword, undefined);
+
+  // 7 & 8: Verify no legacy non-demo emails in presets
+  const legacyEmails = [
+    'admin@caltrack.com',
+    'supervisor@caltrack.com',
+    'qa@caltrack.com',
+    'technician@caltrack.com',
+    'manager@caltrack.com',
+  ];
+
+  for (const preset of DEMO_ROLE_PRESETS) {
+    assert.equal(legacyEmails.includes(preset.email), false);
+  }
+});

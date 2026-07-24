@@ -27,24 +27,17 @@ export default async function handler(req: ExtendedRequest, res: ServerResponse)
   }
 
   const requestUrl = req.url || '/';
+  const queryString = requestUrl.includes('?') ? requestUrl.substring(requestUrl.indexOf('?')) : '';
+  let pathOnly = requestUrl.split('?')[0];
 
-  // Determine correct target path for Express backend
   let targetPath = '';
-  if (
-    requestUrl === '/health' ||
-    requestUrl.startsWith('/health?') ||
-    requestUrl === '/api/health' ||
-    requestUrl.startsWith('/api/health?')
-  ) {
-    const queryString = requestUrl.includes('?') ? requestUrl.substring(requestUrl.indexOf('?')) : '';
+  if (pathOnly === '/health' || pathOnly === '/api/health') {
     targetPath = `/health${queryString}`;
   } else {
-    if (requestUrl.startsWith('/api/')) {
-      targetPath = requestUrl;
-    } else {
-      const cleanPath = requestUrl.startsWith('/') ? requestUrl : `/${requestUrl}`;
-      targetPath = `/api${cleanPath}`;
+    if (!pathOnly.startsWith('/api/')) {
+      pathOnly = `/api${pathOnly.startsWith('/') ? '' : '/'}${pathOnly}`;
     }
+    targetPath = `${pathOnly}${queryString}`;
   }
 
   const targetUrl = `${origin}${targetPath}`;

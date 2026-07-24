@@ -5,16 +5,18 @@ import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
-import { KeyRound, ShieldCheck, Mail, ArrowRight, AlertCircle } from 'lucide-react';
+import { KeyRound, ShieldCheck, Mail, ArrowRight, AlertCircle, Info } from 'lucide-react';
+import { DEMO_ROLE_PRESETS, DemoRolePreset } from '../config/demo-presets';
 
 export const Login: React.FC = () => {
   const { login, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('Password123!');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [infoNotice, setInfoNotice] = useState<string | null>(null);
 
   // Redirect if already logged in
   React.useEffect(() => {
@@ -45,20 +47,18 @@ export const Login: React.FC = () => {
     }
   };
 
-  const handleQuickLogin = (demoEmail: string, pass: string = 'Password123!') => {
-    setEmail(demoEmail);
-    setPassword(pass);
+  const handleQuickLogin = (preset: DemoRolePreset) => {
+    setEmail(preset.email);
     setError(null);
-  };
 
-  const demoAccounts = [
-    { email: 'demo@caltrack.com', pass: 'DemoOnly123!', label: 'Demo Viewer', desc: 'Public portfolio read-only access' },
-    { email: 'admin@caltrack.com', pass: 'Password123!', label: 'Administrator', desc: 'Full registry & standards access' },
-    { email: 'supervisor@caltrack.com', pass: 'Password123!', label: 'Supervisor', desc: 'Manage orders and schedules' },
-    { email: 'qa@caltrack.com', pass: 'Password123!', label: 'QA Reviewer', desc: 'Approve & reject calibrations' },
-    { email: 'technician@caltrack.com', pass: 'Password123!', label: 'Technician', desc: 'Submit calibrations' },
-    { email: 'manager@caltrack.com', pass: 'Password123!', label: 'Metrology Mgr', desc: 'NIST standards management' },
-  ];
+    if (preset.publicPassword) {
+      setPassword(preset.publicPassword);
+      setInfoNotice(null);
+    } else {
+      setPassword('');
+      setInfoNotice('Enter the private demo password supplied by the presenter.');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#070b13] flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden">
@@ -100,6 +100,13 @@ export const Login: React.FC = () => {
               <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-lg p-3">
                 <AlertCircle className="shrink-0 mt-0.5" size={15} />
                 <span>{error}</span>
+              </div>
+            )}
+
+            {infoNotice && (
+              <div className="flex items-start gap-2.5 bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs rounded-lg p-3">
+                <Info className="shrink-0 mt-0.5" size={15} />
+                <span>{infoNotice}</span>
               </div>
             )}
 
@@ -159,11 +166,11 @@ export const Login: React.FC = () => {
               Quick Connect Role Selectors
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {demoAccounts.map((acc) => (
+              {DEMO_ROLE_PRESETS.map((acc) => (
                 <button
                   key={acc.email}
                   type="button"
-                  onClick={() => handleQuickLogin(acc.email, acc.pass)}
+                  onClick={() => handleQuickLogin(acc)}
                   className={`flex flex-col text-left p-2.5 rounded-lg border text-xs font-sans transition-all duration-150 ${
                     email === acc.email
                       ? 'bg-indigo-500/10 border-indigo-500 text-white'
@@ -171,7 +178,7 @@ export const Login: React.FC = () => {
                   }`}
                 >
                   <span className="font-bold text-white text-[11px]">{acc.label}</span>
-                  <span className="text-[9px] text-gray-500 truncate">{acc.desc}</span>
+                  <span className="text-[9px] text-gray-500 truncate">{acc.description}</span>
                 </button>
               ))}
             </div>

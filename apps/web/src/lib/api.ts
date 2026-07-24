@@ -694,11 +694,12 @@ function handleMockRequest<T>(endpoint: string, options: RequestInit = {}): T {
   if (path === '/api/auth/login') {
     const { email } = JSON.parse(options.body as string);
     const mockUsers: Record<string, { role: string; firstName: string; lastName: string }> = {
-      'admin@caltrack.com': { role: 'ADMINISTRATOR', firstName: 'Admin', lastName: 'User' },
-      'supervisor@caltrack.com': { role: 'SUPERVISOR', firstName: 'Marcus', lastName: 'Supervisor' },
-      'qa@caltrack.com': { role: 'QA_REVIEWER', firstName: 'Elena', lastName: 'QA' },
-      'technician@caltrack.com': { role: 'TECHNICIAN', firstName: 'John', lastName: 'Technician' },
-      'manager@caltrack.com': { role: 'METROLOGY_MANAGER', firstName: 'Sarah', lastName: 'Manager' },
+      'demo@caltrack.com': { role: 'DEMO_VIEWER', firstName: 'Demo', lastName: 'Viewer' },
+      'admin.demo@caltrack.com': { role: 'ADMINISTRATOR', firstName: 'Demo', lastName: 'Administrator' },
+      'supervisor.demo@caltrack.com': { role: 'SUPERVISOR', firstName: 'Demo', lastName: 'Supervisor' },
+      'qa.demo@caltrack.com': { role: 'QA_REVIEWER', firstName: 'Demo', lastName: 'QA Reviewer' },
+      'technician.demo@caltrack.com': { role: 'TECHNICIAN', firstName: 'Demo', lastName: 'Technician' },
+      'manager.demo@caltrack.com': { role: 'METROLOGY_MANAGER', firstName: 'Demo', lastName: 'Metrology Manager' },
     };
 
     const profile = mockUsers[email] || { role: 'TECHNICIAN', firstName: 'Guest', lastName: 'User' };
