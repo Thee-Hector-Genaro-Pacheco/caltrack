@@ -3,11 +3,11 @@
   "rewrites": [
     {
       "source": "/api/health",
-      "destination": "/api/[...path]"
+      "destination": "http://18.217.40.35:3001/health"
     },
     {
       "source": "/api/:path*",
-      "destination": "/api/[...path]"
+      "destination": "http://18.217.40.35:3001/api/:path*"
     },
     {
       "source": "/((?!api/).*)",
