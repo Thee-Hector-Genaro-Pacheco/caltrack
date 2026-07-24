@@ -7,6 +7,15 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
+  if (
+    process.env.NODE_ENV === 'production' &&
+    process.env.ALLOW_DESTRUCTIVE_SEED !== 'true'
+  ) {
+    throw new Error(
+      'Refusing to run destructive seed in production. Set ALLOW_DESTRUCTIVE_SEED=true only for an intentional full reset.'
+    );
+  }
+
   console.log('Clearing database tables...');
   await prisma.user.deleteMany({});
   await prisma.auditEvent.deleteMany({});
